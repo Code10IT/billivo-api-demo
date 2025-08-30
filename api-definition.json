@@ -564,7 +564,18 @@
         "required": [
           "invoiceType",
           "invoiceNumber",
-          "issuer"
+          "paymentTermName",
+          "paymentTermDays",
+          "paymentType",
+          "paymentTypeDescription",
+          "dueDate",
+          "totalExclTax",
+          "totalTax",
+          "totalIncTax",
+          "currency",
+          "issuer",
+          "taxType",
+          "image"
         ],
         "properties": {
           "invoiceType": {
