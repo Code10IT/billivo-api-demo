@@ -1,0 +1,1102 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Invoice API",
+    "description": "API for creating invoices with header and line items",
+    "version": "1.1.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.billivo.com/v1",
+      "description": "Production server"
+    },
+    {
+      "url": "https://api-staging.billivo.com/v1",
+      "description": "Staging server"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    },
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/invoices": {
+      "post": {
+        "summary": "Create a new invoice",
+        "description": "Creates a new invoice with header information and line items",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invoice created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - validation errors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing authentication",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable entity - business logic errors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Get all invoices",
+        "description": "Retrieves a paginated list of invoices",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of items per page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by invoice status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["draft", "sent", "paid", "overdue", "cancelled"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoices retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/batch": {
+      "post": {
+        "summary": "Create multiple invoices",
+        "description": "Creates multiple invoices in a single request. Returns results for each invoice including successes and failures.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBulkInvoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "207": {
+            "description": "Multi-status - partial success with individual results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkInvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - validation errors on request structure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing authentication",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large - batch size exceeds limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable entity - business logic errors in invoice data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/{invoiceId}": {
+      "get": {
+        "summary": "Get invoice by ID",
+        "description": "Retrieves a specific invoice by its ID",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "in": "path",
+            "required": true,
+            "description": "The invoice ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoice retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions to access this invoice",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invoice not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update invoice status",
+        "description": "Updates the status of an invoice. Only allows changing the status from 'sent' to 'paid'.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "in": "path",
+            "required": true,
+            "description": "The invoice ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInvoiceStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Invoice status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Invalid request format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions to modify this invoice",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invoice not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable entity - Invalid status transition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "UpdateInvoiceStatusRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "paid"
+            ]
+          }
+        }
+      },
+      "CreateInvoiceRequest": {
+        "type": "object",
+        "required": ["header", "items"],
+        "properties": {
+          "header": {
+            "$ref": "#/components/schemas/InvoiceHeader"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceItem"
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "Issuer": {
+        "type": "object",
+        "required": [
+          "name",
+          "nationalId"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "Billivo Solutions Inc."
+          },
+          "nationalId": {
+            "type": "string",
+            "maxLength": 20,
+            "example": "A12345678"
+          },
+          "addressStreet": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "addressNumber": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "postalCode": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "example": "ES",
+            "description": "ISO 3166-1 alpha-2 country code"
+          },
+          "vatId": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "mailAddress": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 120,
+            "example": "billing@company.com"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "maxLength": 30,
+            "pattern": "^\\+?[1-9]\\d{1,14}$",
+            "example": "+34987654321"
+          }
+        }
+      },
+      "InvoiceHeader": {
+        "type": "object",
+        "required": [
+          "invoiceType",
+          "invoiceNumber",
+          "issuer"
+        ],
+        "properties": {
+          "invoiceType": {
+            "type": "string",
+            "enum": ["F1", "F2"],
+            "example": "F1"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "maxLength": 60,
+            "example": "INV-2025-001234"
+          },
+          "previousInvoiceNumber": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "paymentTermName": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "Net 30"
+          },
+          "paymentTermDays": {
+            "type": "integer",
+            "format": "int32",
+            "example": 30
+          },
+          "paymentType": {
+            "type": "string",
+            "enum": ["bank_transfer", "credit_card", "paypal"],
+            "example": "bank_transfer"
+          },
+          "paymentTypeDescription": {
+            "type": "string",
+            "description": "En este campo se envia informacion relacionada con el campo anterior, dependiendo del tipo, se enviara una descripcion mas detallada",
+            "example": "ES00 1234 5678 9012 3456 7890"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-09-28"
+          },
+          "totalExclTax": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "example": 375.00
+          },
+          "totalTax": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "example": 78.75
+          },
+          "totalIncTax": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "example": 453.75
+          },
+          "additionalNotes": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "example": "EUR",
+            "description": "ISO 4217 currency code"
+          },
+          "irpf": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "discount": {
+            "$ref": "#/components/schemas/Discount"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "issuer": {
+            "$ref": "#/components/schemas/Issuer"
+          },
+          "taxType": {
+            "type": "string",
+            "maxLength": 5
+          },
+          "image": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "regimeKey": {
+            "type": "string",
+            "maxLength": 2
+          },
+          "operationDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-08-29"
+          },
+          "pos": {
+            "$ref": "#/components/schemas/POS"
+          },
+          "currencyExchange": {
+            "$ref": "#/components/schemas/CurrencyExchange"
+          },
+          "customFields": {
+            "type": "object",
+            "description": "Key-value pairs for custom data. Allows for flexible addition of custom fields.",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "maxProperties": 10,
+            "example": {
+              "orderReference": "PO-2025-123",
+              "salesAgent": "John Doe"
+            }
+          }
+        }
+      },
+      "Discount": {
+        "type": "object",
+        "properties": {
+          "percentage": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "amount": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "ISO 4217 currency code"
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "required": [
+          "customerName",
+          "nationalId",
+          "mailAddress"
+        ],
+        "properties": {
+          "customerName": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "ACME Corporation"
+          },
+          "nationalId": {
+            "type": "string",
+            "maxLength": 20,
+            "example": "B12345678"
+          },
+          "vatId": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "addressStreet": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "addressNumber": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "postalCode": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "example": "ES",
+            "description": "ISO 3166-1 alpha-2 country code"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "maxLength": 30,
+            "pattern": "^\\+?[1-9]\\d{1,14}$",
+            "example": "+34612345678"
+          },
+          "mailAddress": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 120,
+            "example": "customer@acme.com"
+          }
+        }
+      },
+      "InvoiceItem": {
+        "type": "object",
+        "required": [
+          "name",
+          "unitPrice",
+          "quantity"
+        ],
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "Professional Services"
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "example": 150.00
+          },
+          "quantity": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "example": 2.5
+          },
+          "vatPercentage": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 21.0
+          },
+          "taxId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "discountPercentage": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "totalExclTax": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "customFields": {
+            "type": "object",
+            "description": "Key-value pairs for custom item data. Allows for flexible addition of custom fields.",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "maxProperties": 10,
+            "example": {
+              "productCode": "SKU-12345",
+              "warranty": "2 years",
+              "supplier": "ACME Corp"
+            }
+          }
+        }
+      },
+      "InvoiceResponse": {
+        "type": "object",
+        "required": ["success", "invoiceId", "message"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "invoiceId": {
+            "type": "string",
+            "example": "INV-2025-001234"
+          },
+          "message": {
+            "type": "string",
+            "example": "Invoice created successfully"
+          }
+        }
+      },
+      "POS": {
+        "type": "object",
+        "description": "Point of Sale (POS) information",
+        "properties": {
+          "storeId": {
+            "type": "string",
+            "description": "Store identifier",
+            "example": "MAD-01"
+          },
+          "terminalId": {
+            "type": "string",
+            "description": "Terminal identifier",
+            "example": "T-07"
+          },
+          "cashierId": {
+            "type": "string",
+            "description": "Cashier identifier",
+            "example": "EMP-045"
+          },
+          "shift": {
+            "type": "string",
+            "enum": ["morning", "afternoon", "evening", "night"],
+            "description": "Work shift",
+            "example": "afternoon"
+          }
+        }
+      },
+      "CurrencyExchange": {
+        "type": "object",
+        "description": "Currency conversion details",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "Invoice currency code (ISO 4217)",
+            "example": "USD"
+          },
+          "baseCurrency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "Base currency code",
+            "example": "EUR"
+          },
+          "exchangeRate": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "description": "Applied exchange rate",
+            "example": 0.92
+          },
+          "exchangeRateDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Date when the exchange rate was set",
+            "example": "2025-08-20"
+          },
+          "totalAmountInBaseCurrency": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "description": "Total invoice amount in base currency",
+            "example": 111.32
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["success", "error"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "string",
+            "example": "Validation failed"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Customer name is required", "Invalid email format"]
+          }
+        }
+      },
+      "Invoice": {
+        "type": "object",
+        "required": ["id", "header", "items", "status", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "INV-2025-001234"
+          },
+          "header": {
+            "$ref": "#/components/schemas/InvoiceHeader"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceItem"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "sent", "paid", "overdue", "cancelled"],
+            "example": "draft"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-08-29T10:30:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-08-29T10:30:00Z"
+          }
+        }
+      },
+      "InvoiceListResponse": {
+        "type": "object",
+        "required": ["success", "data", "pagination"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Invoice"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "required": ["page", "limit", "total", "totalPages"],
+            "properties": {
+              "page": {
+                "type": "integer",
+                "example": 1
+              },
+              "limit": {
+                "type": "integer",
+                "example": 20
+              },
+              "total": {
+                "type": "integer",
+                "example": 150
+              },
+              "totalPages": {
+                "type": "integer",
+                "example": 8
+              }
+            }
+          }
+        }
+      },
+      "CreateBulkInvoiceRequest": {
+        "type": "object",
+        "required": ["invoices"],
+        "properties": {
+          "invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateInvoiceRequest"
+            },
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "Array of invoice creation requests (max 50 per batch)"
+          }
+        }
+      },
+      "BulkInvoiceResponse": {
+        "type": "object",
+        "required": ["success", "results"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true,
+            "description": "True if at least one invoice was created successfully"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkInvoiceResult"
+            },
+            "description": "Results for each invoice in the request"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "example": 10
+              },
+              "successful": {
+                "type": "integer",
+                "example": 8
+              },
+              "failed": {
+                "type": "integer",
+                "example": 2
+              }
+            }
+          }
+        }
+      },
+      "BulkInvoiceResult": {
+        "type": "object",
+        "required": ["index", "success"],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "Index of the invoice in the original request array",
+            "example": 0
+          },
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "invoice": {
+            "$ref": "#/components/schemas/Invoice",
+            "description": "Created invoice (only present if success is true)"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message (only present if success is false)",
+            "example": "Customer email is required"
+          },
+          "validationErrors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Detailed validation errors (only present if success is false)"
+          }
+        }
+      }
+    }
+  }
+}
