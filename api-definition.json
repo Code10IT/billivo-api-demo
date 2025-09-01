@@ -761,7 +761,7 @@
       },
       "InvoiceItem": {
         "type": "object",
-        "required": ["name", "unitPrice", "quantity"],
+        "required": ["name", "unitPrice", "quantity", "vatPercentage"],
         "properties": {
           "itemId": {
             "type": "number",
@@ -795,7 +795,6 @@
             "minimum": 0,
             "maximum": 100,
             "example": 21.0,
-            "required": true,
             "default": 21.0
           },
           "discountPercentage": {
