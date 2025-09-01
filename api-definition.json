@@ -526,12 +526,14 @@
           },
           "city": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 50,
+            "required": true
           },
           "country": {
             "type": "string",
             "pattern": "^[A-Z]{2}$",
             "example": "ES",
+            "required": true,
             "description": "ISO 3166-1 alpha-2 country code"
           },
           "vatId": {
@@ -644,6 +646,7 @@
           "irpf": {
             "type": "number",
             "minimum": 0,
+            "default": 0,
             "format": "decimal"
           },
           "discount": {
