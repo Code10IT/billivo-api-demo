@@ -567,13 +567,13 @@
           "totalIncTax",
           "currency",
           "issuer",
-          "taxType",
-          "image"
+          "taxType"
         ],
         "properties": {
           "invoiceType": {
             "type": "string",
             "enum": ["F1", "F2", "F3", "F4", "R1", "R2", "R3", "R4", "R3"],
+            "description": "FX for Invoices, RX for Corrective (Rectificativas)",
             "example": "F1"
           },
           "invoiceNumber": {
@@ -581,19 +581,20 @@
             "maxLength": 60,
             "example": "INV-2025-001234"
           },
-          "correctedInvoiceNumber": {
-            "type": "string",
-            "maxLength": 60,
-            "example": "INV-2025-001200"
-          },
           "previousInvoiceNumber": {
             "type": "string",
             "maxLength": 60
           },
+          "correctedInvoiceNumber": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "If you are correcting an invoice (invoiceType = R), use this field to reference the original invoice.",
+            "example": "INV-2025-001200"
+          },
           "paymentTermName": {
             "type": "string",
             "maxLength": 255,
-            "example": "Net 30"
+            "example": "30 days"
           },
           "paymentTermDays": {
             "type": "integer",
@@ -602,12 +603,12 @@
           },
           "paymentType": {
             "type": "string",
-            "enum": ["bank_transfer", "credit_card", "paypal", "cash"],
-            "example": "bank_transfer"
+            "enum": ["Bank Transfer", "Credit Card", "PayPal", "Cash"],
+            "example": "Bank Transfer"
           },
           "paymentTypeDescription": {
             "type": "string",
-            "description": "En este campo se envia informacion relacionada con el campo anterior, dependiendo del tipo, se enviara una descripcion mas detallada",
+            "description": "Additional details about the payment method",
             "example": "ES0012345678901234567890"
           },
           "dueDate": {
@@ -618,19 +619,16 @@
           "totalExclTax": {
             "type": "number",
             "format": "decimal",
-            "minimum": 0,
             "example": 375.0
           },
           "totalTax": {
             "type": "number",
             "format": "decimal",
-            "minimum": 0,
             "example": 78.75
           },
           "totalIncTax": {
             "type": "number",
             "format": "decimal",
-            "minimum": 0,
             "example": 453.75
           },
           "additionalNotes": {
@@ -645,6 +643,7 @@
           },
           "irpf": {
             "type": "number",
+            "minimum": 0,
             "format": "decimal"
           },
           "discount": {
@@ -659,10 +658,6 @@
           "taxType": {
             "type": "string",
             "maxLength": 5
-          },
-          "image": {
-            "type": "string",
-            "maxLength": 255
           },
           "regimeKey": {
             "type": "string",
