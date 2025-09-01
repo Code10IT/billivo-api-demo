@@ -189,92 +189,6 @@
         }
       }
     },
-    "/invoices/batch": {
-      "post": {
-        "summary": "Create multiple invoices",
-        "description": "Creates multiple invoices in a single request. Returns results for each invoice including successes and failures.",
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateBulkInvoiceRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "207": {
-            "description": "Multi-status - partial success with individual results",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkInvoiceResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request - validation errors on request structure",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - invalid or missing authentication",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Payload too large - batch size exceeds limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable entity - business logic errors in invoice data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/invoices/{invoiceId}": {
       "get": {
         "summary": "Get invoice by ID",
@@ -353,7 +267,7 @@
       },
       "patch": {
         "summary": "Update invoice status",
-        "description": "Updates the status of an invoice. Only allows changing the status from 'sent' to 'paid'.",
+        "description": "Updates the status of an invoice to 'paid'. The invoice must be in 'sent' status to be updated.",
         "security": [
           {
             "ApiKeyAuth": []
@@ -500,7 +414,7 @@
       },
       "Issuer": {
         "type": "object",
-        "required": ["name", "nationalId"],
+        "required": ["name", "nationalId", "city", "country"],
         "properties": {
           "name": {
             "type": "string",
@@ -526,14 +440,12 @@
           },
           "city": {
             "type": "string",
-            "maxLength": 50,
-            "required": true
+            "maxLength": 50
           },
           "country": {
             "type": "string",
             "pattern": "^[A-Z]{2}$",
             "example": "ES",
-            "required": true,
             "description": "ISO 3166-1 alpha-2 country code"
           },
           "vatId": {
@@ -764,7 +676,7 @@
         "required": ["name", "unitPrice", "quantity", "vatPercentage"],
         "properties": {
           "itemId": {
-            "type": "number",
+            "type": "string",
             "maxLength": 36,
             "description": "Unique identifier for the item - Used to show the item in the invoice in order"
           },
@@ -799,11 +711,14 @@
           },
           "discountPercentage": {
             "type": "number",
-            "format": "decimal"
+            "format": "decimal",
+            "minimum": 0,
+            "maximum": 100
           },
           "discountAmount": {
             "type": "number",
-            "format": "decimal"
+            "format": "decimal",
+            "minimum": 0
           },
           "totalExclTax": {
             "type": "number",
@@ -998,87 +913,6 @@
                 "example": 8
               }
             }
-          }
-        }
-      },
-      "CreateBulkInvoiceRequest": {
-        "type": "object",
-        "required": ["invoices"],
-        "properties": {
-          "invoices": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateInvoiceRequest"
-            },
-            "minItems": 1,
-            "maxItems": 50,
-            "description": "Array of invoice creation requests (max 50 per batch)"
-          }
-        }
-      },
-      "BulkInvoiceResponse": {
-        "type": "object",
-        "required": ["success", "results"],
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "example": true,
-            "description": "True if at least one invoice was created successfully"
-          },
-          "results": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BulkInvoiceResult"
-            },
-            "description": "Results for each invoice in the request"
-          },
-          "summary": {
-            "type": "object",
-            "properties": {
-              "total": {
-                "type": "integer",
-                "example": 10
-              },
-              "successful": {
-                "type": "integer",
-                "example": 8
-              },
-              "failed": {
-                "type": "integer",
-                "example": 2
-              }
-            }
-          }
-        }
-      },
-      "BulkInvoiceResult": {
-        "type": "object",
-        "required": ["index", "success"],
-        "properties": {
-          "index": {
-            "type": "integer",
-            "description": "Index of the invoice in the original request array",
-            "example": 0
-          },
-          "success": {
-            "type": "boolean",
-            "example": true
-          },
-          "invoice": {
-            "$ref": "#/components/schemas/Invoice",
-            "description": "Created invoice (only present if success is true)"
-          },
-          "error": {
-            "type": "string",
-            "description": "Error message (only present if success is false)",
-            "example": "Customer email is required"
-          },
-          "validationErrors": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Detailed validation errors (only present if success is false)"
           }
         }
       }
