@@ -569,7 +569,8 @@
           "totalIncTax",
           "currency",
           "issuer",
-          "taxType"
+          "taxType",
+          "regimeKey"
         ],
         "properties": {
           "invoiceType": {
@@ -664,6 +665,8 @@
           },
           "regimeKey": {
             "type": "string",
+            "default": "01",
+            "description": "Tax regime code. Default is '01' for general regime.",
             "maxLength": 2
           },
           "operationDate": {
