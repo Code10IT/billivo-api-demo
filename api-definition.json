@@ -575,6 +575,8 @@
         "properties": {
           "invoiceType": {
             "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
             "enum": ["F1", "F2", "F3", "F4", "R1", "R2", "R3", "R4", "R3"],
             "description": "FX for Invoices, RX for Corrective (Rectificativas)",
             "example": "F1"
@@ -602,7 +604,8 @@
           "paymentTermDays": {
             "type": "integer",
             "format": "int32",
-            "example": 30
+            "example": 30,
+            "default": 0
           },
           "paymentType": {
             "type": "string",
