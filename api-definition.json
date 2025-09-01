@@ -581,6 +581,11 @@
             "maxLength": 60,
             "example": "INV-2025-001234"
           },
+          "correctedInvoiceNumber": {
+            "type": "string",
+            "maxLength": 60,
+            "example": "INV-2025-001200"
+          },
           "previousInvoiceNumber": {
             "type": "string",
             "maxLength": 60
