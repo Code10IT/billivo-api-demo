@@ -474,15 +474,11 @@
     "schemas": {
       "UpdateInvoiceStatusRequest": {
         "type": "object",
-        "required": [
-          "status"
-        ],
+        "required": ["status"],
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "paid"
-            ]
+            "enum": ["paid"]
           }
         }
       },
@@ -504,15 +500,12 @@
       },
       "Issuer": {
         "type": "object",
-        "required": [
-          "name",
-          "nationalId"
-        ],
+        "required": ["name", "nationalId"],
         "properties": {
           "name": {
             "type": "string",
             "maxLength": 120,
-            "example": "Billivo Solutions Inc."
+            "example": "Code10 IT"
           },
           "nationalId": {
             "type": "string",
@@ -549,7 +542,7 @@
             "type": "string",
             "format": "email",
             "maxLength": 120,
-            "example": "billing@company.com"
+            "example": "billing@code10it.com"
           },
           "phoneNumber": {
             "type": "string",
@@ -580,7 +573,7 @@
         "properties": {
           "invoiceType": {
             "type": "string",
-            "enum": ["F1", "F2"],
+            "enum": ["F1", "F2", "F3", "F4", "R1", "R2", "R3", "R4", "R3"],
             "example": "F1"
           },
           "invoiceNumber": {
@@ -604,13 +597,13 @@
           },
           "paymentType": {
             "type": "string",
-            "enum": ["bank_transfer", "credit_card", "paypal"],
+            "enum": ["bank_transfer", "credit_card", "paypal", "cash"],
             "example": "bank_transfer"
           },
           "paymentTypeDescription": {
             "type": "string",
             "description": "En este campo se envia informacion relacionada con el campo anterior, dependiendo del tipo, se enviara una descripcion mas detallada",
-            "example": "ES00 1234 5678 9012 3456 7890"
+            "example": "ES0012345678901234567890"
           },
           "dueDate": {
             "type": "string",
@@ -621,7 +614,7 @@
             "type": "number",
             "format": "decimal",
             "minimum": 0,
-            "example": 375.00
+            "example": 375.0
           },
           "totalTax": {
             "type": "number",
@@ -719,11 +712,7 @@
       },
       "Customer": {
         "type": "object",
-        "required": [
-          "customerName",
-          "nationalId",
-          "mailAddress"
-        ],
+        "required": ["customerName", "nationalId", "mailAddress"],
         "properties": {
           "customerName": {
             "type": "string",
@@ -777,11 +766,7 @@
       },
       "InvoiceItem": {
         "type": "object",
-        "required": [
-          "name",
-          "unitPrice",
-          "quantity"
-        ],
+        "required": ["name", "unitPrice", "quantity"],
         "properties": {
           "itemId": {
             "type": "string",
@@ -804,7 +789,7 @@
             "type": "number",
             "format": "decimal",
             "minimum": 0,
-            "example": 150.00
+            "example": 150.0
           },
           "quantity": {
             "type": "number",
