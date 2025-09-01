@@ -564,10 +564,6 @@
           "paymentType",
           "paymentTypeDescription",
           "dueDate",
-          "totalExclTax",
-          "totalTax",
-          "totalIncTax",
-          "currency",
           "issuer",
           "taxType",
           "regimeKey",
@@ -578,7 +574,7 @@
             "type": "string",
             "maxLength": 2,
             "minLength": 2,
-            "enum": ["F1", "F2", "F3", "F4", "R1", "R2", "R3", "R4", "R3"],
+            "enum": ["F1", "F2", "F3", "F4", "R1", "R2", "R3", "R4", "R5"],
             "description": "FX for Invoices, RX for Corrective (Rectificativas)",
             "example": "F1"
           },
@@ -610,7 +606,7 @@
           },
           "paymentType": {
             "type": "string",
-            "enum": ["Bank Transfer", "Credit Card", "PayPal", "Cash"],
+            "enum": ["Bank Transfer", "Credit Card", "PayPal", "Cash", "Other"],
             "example": "Bank Transfer"
           },
           "paymentTypeDescription": {
@@ -623,21 +619,6 @@
             "format": "date",
             "example": "2025-09-28"
           },
-          "totalExclTax": {
-            "type": "number",
-            "format": "decimal",
-            "example": 375.0
-          },
-          "totalTax": {
-            "type": "number",
-            "format": "decimal",
-            "example": 78.75
-          },
-          "totalIncTax": {
-            "type": "number",
-            "format": "decimal",
-            "example": 453.75
-          },
           "additionalNotes": {
             "type": "string",
             "maxLength": 300
@@ -646,6 +627,7 @@
             "type": "string",
             "pattern": "^[A-Z]{3}$",
             "example": "EUR",
+            "default": "EUR",
             "description": "ISO 4217 currency code"
           },
           "irpf": {
@@ -665,7 +647,9 @@
           },
           "taxType": {
             "type": "string",
-            "maxLength": 5
+            "description": "Type of tax applicable.",
+            "default": "01",
+            "maxLength": 2
           },
           "regimeKey": {
             "type": "string",
@@ -716,7 +700,8 @@
           "currency": {
             "type": "string",
             "pattern": "^[A-Z]{3}$",
-            "description": "ISO 4217 currency code"
+            "description": "ISO 4217 currency code",
+            "default": "EUR"
           }
         }
       },
@@ -779,17 +764,14 @@
         "required": ["name", "unitPrice", "quantity"],
         "properties": {
           "itemId": {
-            "type": "string",
-            "maxLength": 36
+            "type": "number",
+            "maxLength": 36,
+            "description": "Unique identifier for the item - Used to show the item in the invoice in order"
           },
           "name": {
             "type": "string",
             "maxLength": 255,
             "example": "Professional Services"
-          },
-          "type": {
-            "type": "string",
-            "maxLength": 255
           },
           "description": {
             "type": "string",
@@ -812,11 +794,9 @@
             "format": "decimal",
             "minimum": 0,
             "maximum": 100,
-            "example": 21.0
-          },
-          "taxId": {
-            "type": "integer",
-            "format": "int32"
+            "example": 21.0,
+            "required": true,
+            "default": 21.0
           },
           "discountPercentage": {
             "type": "number",
