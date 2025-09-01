@@ -570,7 +570,8 @@
           "currency",
           "issuer",
           "taxType",
-          "regimeKey"
+          "regimeKey",
+          "irpf"
         ],
         "properties": {
           "invoiceType": {
