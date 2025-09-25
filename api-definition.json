@@ -8,30 +8,60 @@
   "servers": [
     {
       "url": "https://api.billivo.com/v1",
-      "description": "Production server"
+      "description": "Production server (not defined yet)"
     },
     {
-      "url": "https://api-staging.billivo.com/v1",
+      "url": "https://06nii0nn03.execute-api.eu-west-1.amazonaws.com",
       "description": "Staging server"
     }
   ],
   "security": [
     {
-      "ApiKeyAuth": []
+      "BasicAuth": []
     },
     {
       "BearerAuth": []
     }
   ],
   "paths": {
-    "/invoices": {
+    "/invoice/token": {
+      "post": {
+        "summary": "Retrieve token",
+        "description": "Retrieves token in order to perform all the calls",
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoice": {
       "post": {
         "summary": "Create a new invoice",
         "description": "Creates a new invoice with header information and line items",
         "security": [
-          {
-            "ApiKeyAuth": []
-          },
           {
             "BearerAuth": []
           }
@@ -77,16 +107,6 @@
               }
             }
           },
-          "422": {
-            "description": "Unprocessable entity - business logic errors",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -103,9 +123,6 @@
         "summary": "Get all invoices",
         "description": "Retrieves a paginated list of invoices",
         "security": [
-          {
-            "ApiKeyAuth": []
-          },
           {
             "BearerAuth": []
           }
@@ -141,7 +158,23 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["draft", "sent", "paid", "overdue", "cancelled"]
+              "enum": [
+                "draft",
+                "sent",
+                "paid",
+                "overdue",
+                "validated_with_errors",
+                "cancelled"
+              ]
+            }
+          },
+          {
+            "name": "userEmail",
+            "in": "path",
+            "required": true,
+            "description": "Mail from the user which the invoices pertain",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -189,24 +222,30 @@
         }
       }
     },
-    "/invoices/{invoiceId}": {
+    "/invoice/{invoiceNumber}": {
       "get": {
-        "summary": "Get invoice by ID",
-        "description": "Retrieves a specific invoice by its ID",
+        "summary": "Get invoice by invoice number",
+        "description": "Retrieves a specific invoice by its invoice number",
         "security": [
-          {
-            "ApiKeyAuth": []
-          },
           {
             "BearerAuth": []
           }
         ],
         "parameters": [
           {
-            "name": "invoiceId",
+            "name": "invoiceNumber",
             "in": "path",
             "required": true,
-            "description": "The invoice ID",
+            "description": "The invoice number",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userEmail",
+            "in": "path",
+            "required": true,
+            "description": "Mail from the user which the invoice pertains",
             "schema": {
               "type": "string"
             }
@@ -270,18 +309,24 @@
         "description": "Updates the status of an invoice to 'paid'. The invoice must be in 'sent' status to be updated.",
         "security": [
           {
-            "ApiKeyAuth": []
-          },
-          {
             "BearerAuth": []
           }
         ],
         "parameters": [
           {
-            "name": "invoiceId",
+            "name": "invoiceNumber",
             "in": "path",
             "required": true,
-            "description": "The invoice ID",
+            "description": "The invoice number",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userEmail",
+            "in": "path",
+            "required": true,
+            "description": "Mail from the user which the invoice pertains",
             "schema": {
               "type": "string"
             }
@@ -328,28 +373,8 @@
               }
             }
           },
-          "403": {
-            "description": "Forbidden - insufficient permissions to modify this invoice",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Invoice not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable entity - Invalid status transition",
             "content": {
               "application/json": {
                 "schema": {
@@ -374,10 +399,10 @@
   },
   "components": {
     "securitySchemes": {
-      "ApiKeyAuth": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-API-Key"
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "HTTP Basic Authentication for client credentials (usually client_id and client_secret)."
       },
       "BearerAuth": {
         "type": "http",
@@ -392,7 +417,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["paid"]
+            "enum": ["sent"]
           }
         }
       },
@@ -470,7 +495,6 @@
         "type": "object",
         "required": [
           "invoiceType",
-          "invoiceNumber",
           "paymentTermName",
           "paymentTermDays",
           "paymentType",
@@ -486,7 +510,19 @@
             "type": "string",
             "maxLength": 2,
             "minLength": 2,
-            "enum": ["F1", "F2", "F3", "F4", "R1", "R2", "R3", "R4", "R5"],
+            "enum": [
+              "F1",
+              "F2",
+              "F3",
+              "F4",
+              "F5",
+              "F6",
+              "R1",
+              "R2",
+              "R3",
+              "R4",
+              "R5"
+            ],
             "description": "FX for Invoices, RX for Corrective (Rectificativas)",
             "example": "F1"
           },
@@ -497,13 +533,25 @@
           },
           "previousInvoiceNumber": {
             "type": "string",
-            "maxLength": 60
+            "maxLength": 60,
+            "example": "INV-2025-001199"
           },
           "correctedInvoiceNumber": {
             "type": "string",
             "maxLength": 60,
             "description": "If you are correcting an invoice (invoiceType = R), use this field to reference the original invoice.",
             "example": "INV-2025-001200"
+          },
+          "correctiveType": {
+            "type": "string",
+            "enum": ["I", "S"],
+            "description": "If you are correcting an invoice (invoiceType = R), use this field to select the corrective type, 'I' to correct by difference and 'S' to correct by substitution.",
+            "example": "I"
+          },
+          "bankName": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "Santander"
           },
           "paymentTermName": {
             "type": "string",
@@ -687,7 +735,13 @@
           },
           "description": {
             "type": "string",
-            "maxLength": 1000
+            "maxLength": 255
+          },
+          "type": {
+            "type": "string",
+            "enum": ["Service", "Article"],
+            "description": "Type of invoice item",
+            "example": "Service"
           },
           "unitPrice": {
             "type": "number",
@@ -720,7 +774,7 @@
             "format": "decimal",
             "minimum": 0
           },
-          "totalExclTax": {
+          "totalExcTax": {
             "type": "number",
             "format": "decimal"
           },
@@ -742,15 +796,11 @@
       },
       "InvoiceResponse": {
         "type": "object",
-        "required": ["success", "invoiceId", "message"],
+        "required": ["invoice", "message"],
         "properties": {
-          "success": {
-            "type": "boolean",
-            "example": true
-          },
-          "invoiceId": {
-            "type": "string",
-            "example": "INV-2025-001234"
+          "invoice": {
+            "type": "object",
+            "$ref": "#/components/schemas/InvoiceHeader"
           },
           "message": {
             "type": "string",
@@ -823,35 +873,75 @@
           }
         }
       },
+      "TokenResponse": {
+        "type": "object",
+        "description": "The successful response payload for a token retrieval endpoint.",
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "The **JWT access token** used for authenticating all subsequent resource API calls.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "token_type": {
+            "type": "string",
+            "description": "Indicates how the access token should be used. Should be **'Bearer'**.",
+            "example": "Bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The lifetime in **seconds** of the access token.",
+            "example": 3600
+          },
+          "id_token": {
+            "type": "string",
+            "description": "An **OpenID Connect (OIDC) token** containing claims about the authenticated user.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "refresh_token": {
+            "type": "string",
+            "description": "A token used to obtain a new access token after the current one expires.",
+            "example": "rt_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        },
+        "required": ["access_token", "token_type", "expires_in"]
+      },
+      "TokenErrorResponse": {
+        "type": "object",
+        "description": "The error response payload for token retrieval.",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Type of error.",
+            "example": "invalid_grant"
+          },
+          "error_description": {
+            "type": "string",
+            "description": "Describes which error has appeared.",
+            "example": "Incorrect username or password."
+          },
+          "code": {
+            "type": "string",
+            "description": "Error code.",
+            "example": "NotAuthorizedException"
+          }
+        },
+        "required": ["error"]
+      },
       "ErrorResponse": {
         "type": "object",
-        "required": ["success", "error"],
+        "required": ["error"],
         "properties": {
-          "success": {
-            "type": "boolean",
-            "example": false
-          },
           "error": {
             "type": "string",
             "example": "Validation failed"
-          },
-          "details": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "example": ["Customer name is required", "Invalid email format"]
           }
         }
       },
       "Invoice": {
         "type": "object",
-        "required": ["id", "header", "items", "status", "createdAt"],
+        "required": ["header", "items", "status"],
         "properties": {
-          "id": {
-            "type": "string",
-            "example": "INV-2025-001234"
-          },
           "header": {
             "$ref": "#/components/schemas/InvoiceHeader"
           },
@@ -863,30 +953,27 @@
           },
           "status": {
             "type": "string",
-            "enum": ["draft", "sent", "paid", "overdue", "cancelled"],
-            "example": "draft"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2025-08-29T10:30:00Z"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2025-08-29T10:30:00Z"
+            "enum": [
+              "draft",
+              "sent",
+              "paid",
+              "overdue",
+              "validated_with_errors",
+              "cancelled"
+            ],
+            "example": "sent"
           }
         }
       },
       "InvoiceListResponse": {
         "type": "object",
-        "required": ["success", "data", "pagination"],
+        "required": ["message", "body", "pagination"],
         "properties": {
-          "success": {
-            "type": "boolean",
-            "example": true
+          "message": {
+            "type": "string",
+            "example": "Successful"
           },
-          "data": {
+          "body": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Invoice"
