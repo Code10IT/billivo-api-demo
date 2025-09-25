@@ -24,7 +24,7 @@
     }
   ],
   "paths": {
-    "/invoice/token": {
+    "/token": {
       "post": {
         "summary": "Retrieve token",
         "description": "Retrieves token in order to perform all the calls",
