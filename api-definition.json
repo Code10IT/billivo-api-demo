@@ -574,6 +574,11 @@
             "description": "Additional details about the payment method",
             "example": "ES0012345678901234567890"
           },
+          "invoiceDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-09-28T14:38:15.000Z"
+          },
           "dueDate": {
             "type": "string",
             "format": "date",
