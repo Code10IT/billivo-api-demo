@@ -82,7 +82,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Invoice"
+                  "$ref": "#/components/schemas/InvoiceValidationResponse"
                 }
               }
             }
@@ -967,6 +967,19 @@
               "cancelled"
             ],
             "example": "sent"
+          }
+        }
+      },
+      "InvoiceValidationResponse": {
+        "type": "object",
+        "required": ["invoice", "status"],
+        "properties": {
+          "invoice": {
+            "$ref": "#/components/schemas/Invoice"
+          },
+          "base64pdf": {
+            "type": "string",
+            "example": "data:application/pdf;filename=generated.pdf;base64..."
           }
         }
       },
