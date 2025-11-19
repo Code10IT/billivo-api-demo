@@ -318,7 +318,7 @@ Actualiza el estado de una factura existente.
 ### Ejemplo 1: Crear Factura en Modo NO_ERP (Numeración Automática)
 
 ```bash
-curl -X POST https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice \
+curl -X POST https://api.billivo.com/invoice \
   -H "Authorization: Bearer {tu_token}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -377,7 +377,7 @@ curl -X POST https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice \
 ### Ejemplo 2: Crear Factura en Modo ERP (Numeración Manual)
 
 ```bash
-curl -X POST https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice \
+curl -X POST https://api.billivo.com/invoice \
   -H "Authorization: Bearer {tu_token}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -437,7 +437,7 @@ curl -X POST https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice \
 ### Ejemplo 3: Crear Factura Rectificativa
 
 ```bash
-curl -X POST https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice \
+curl -X POST https://api.billivo.com/invoice \
   -H "Authorization: Bearer {tu_token}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -495,19 +495,19 @@ curl -X POST https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice \
 
 ```bash
 # Obtener todas las facturas de un usuario
-curl -X GET "https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice?userEmail=usuario@empresa.com" \
+curl -X GET "https://api.billivo.com/invoice?userEmail=usuario@empresa.com" \
   -H "Authorization: Bearer {tu_token}"
 
 # Obtener una factura específica
-curl -X GET "https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice?userEmail=usuario@empresa.com&invoiceNumber=2025-0000000027" \
+curl -X GET "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&invoiceNumber=2025-0000000027" \
   -H "Authorization: Bearer {tu_token}"
 
 # Consultar con paginación
-curl -X GET "https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice?userEmail=usuario@empresa.com&page=2&limit=50" \
+curl -X GET "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&page=2&limit=50" \
   -H "Authorization: Bearer {tu_token}"
 
 # Filtrar por estado
-curl -X GET "https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice?userEmail=usuario@empresa.com&status=paid" \
+curl -X GET "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&status=paid" \
   -H "Authorization: Bearer {tu_token}"
 ```
 
@@ -516,7 +516,7 @@ curl -X GET "https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice?user
 ### Ejemplo 5: Actualizar Estado de Factura
 
 ```bash
-curl -X PATCH "https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice?userEmail=usuario@empresa.com&invoiceNumber=2025-0000000027" \
+curl -X PATCH "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&invoiceNumber=2025-0000000027" \
   -H "Authorization: Bearer {tu_token}" \
   -H "Content-Type: application/json" \
   -d '{

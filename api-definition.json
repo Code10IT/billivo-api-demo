@@ -7,12 +7,8 @@
   },
   "servers": [
     {
-      "url": "https://api.billivo.com/v1",
-      "description": "Production server (not defined yet)"
-    },
-    {
-      "url": "https://06nii0nn03.execute-api.eu-west-1.amazonaws.com",
-      "description": "Staging server"
+      "url": "https://api.billivo.com",
+      "description": "Billivo API Server"
     }
   ],
   "security": [
