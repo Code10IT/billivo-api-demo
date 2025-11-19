@@ -120,14 +120,33 @@
         }
       },
       "get": {
-        "summary": "Get all invoices",
-        "description": "Retrieves a paginated list of invoices",
+        "summary": "Get all invoices or specific invoice",
+        "description": "Retrieves invoices for a specific user. Can retrieve all invoices or a specific invoice by number.",
         "security": [
           {
             "BearerAuth": []
           }
         ],
         "parameters": [
+          {
+            "name": "userEmail",
+            "in": "query",
+            "required": true,
+            "description": "Email of the user whose invoices to retrieve",
+            "schema": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          {
+            "name": "invoiceNumber",
+            "in": "query",
+            "required": false,
+            "description": "Specific invoice number to retrieve. If not provided, returns all invoices for the user.",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "page",
             "in": "query",
@@ -163,18 +182,10 @@
                 "sent",
                 "paid",
                 "overdue",
+                "validated",
                 "validated_with_errors",
                 "cancelled"
               ]
-            }
-          },
-          {
-            "name": "userEmail",
-            "in": "path",
-            "required": true,
-            "description": "Mail from the user which the invoices pertain",
-            "schema": {
-              "type": "string"
             }
           }
         ],
@@ -220,93 +231,10 @@
             }
           }
         }
-      }
-    },
-    "/invoice/{invoiceNumber}": {
-      "get": {
-        "summary": "Get invoice by invoice number",
-        "description": "Retrieves a specific invoice by its invoice number",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "invoiceNumber",
-            "in": "path",
-            "required": true,
-            "description": "The invoice number",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "userEmail",
-            "in": "path",
-            "required": true,
-            "description": "Mail from the user which the invoice pertains",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Invoice retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Invoice"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions to access this invoice",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Invoice not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
       },
       "patch": {
         "summary": "Update invoice status",
-        "description": "Updates the status of an invoice to 'paid'. The invoice must be in 'sent' status to be updated.",
+        "description": "Updates the status of an invoice. Typically used to mark an invoice as validated or sent.",
         "security": [
           {
             "BearerAuth": []
@@ -314,19 +242,20 @@
         ],
         "parameters": [
           {
-            "name": "invoiceNumber",
-            "in": "path",
+            "name": "userEmail",
+            "in": "query",
             "required": true,
-            "description": "The invoice number",
+            "description": "Email of the user who owns the invoice",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "email"
             }
           },
           {
-            "name": "userEmail",
-            "in": "path",
+            "name": "invoiceNumber",
+            "in": "query",
             "required": true,
-            "description": "Mail from the user which the invoice pertains",
+            "description": "The invoice number to update",
             "schema": {
               "type": "string"
             }
@@ -348,7 +277,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Invoice"
+                  "$ref": "#/components/schemas/UpdateInvoiceStatusResponse"
                 }
               }
             }
@@ -417,7 +346,17 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["sent"]
+            "enum": ["sent", "validated", "paid", "cancelled"],
+            "description": "New status for the invoice"
+          }
+        }
+      },
+      "UpdateInvoiceStatusResponse": {
+        "type": "object",
+        "required": ["body"],
+        "properties": {
+          "body": {
+            "$ref": "#/components/schemas/Invoice"
           }
         }
       },
@@ -961,11 +900,13 @@
             "enum": [
               "draft",
               "sent",
+              "validated",
               "paid",
               "overdue",
               "validated_with_errors",
               "cancelled"
             ],
+            "description": "Current status of the invoice. 'validated' indicates the invoice has been validated and is ready to be sent.",
             "example": "sent"
           }
         }
@@ -985,38 +926,12 @@
       },
       "InvoiceListResponse": {
         "type": "object",
-        "required": ["message", "body", "pagination"],
+        "required": ["body"],
         "properties": {
-          "message": {
-            "type": "string",
-            "example": "Successful"
-          },
           "body": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Invoice"
-            }
-          },
-          "pagination": {
-            "type": "object",
-            "required": ["page", "limit", "total", "totalPages"],
-            "properties": {
-              "page": {
-                "type": "integer",
-                "example": 1
-              },
-              "limit": {
-                "type": "integer",
-                "example": 20
-              },
-              "total": {
-                "type": "integer",
-                "example": 150
-              },
-              "totalPages": {
-                "type": "integer",
-                "example": 8
-              }
             }
           }
         }
