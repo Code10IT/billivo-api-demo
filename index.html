@@ -3,16 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billivo Invoice API Documentation</title>
+    <title>Billivo API - Documentation</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
     <style>
         body {
             margin: 0;
             padding: 0;
         }
+        /* Custom Billivo header */
+        .billivo-header {
+            background-color: #F5F3F7;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .billivo-header img {
+            height: 40px;
+            width: auto;
+        }
+        .billivo-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #7F56D9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        #redoc-container {
+            height: calc(100vh - 81px);
+        }
     </style>
 </head>
 <body>
-    <redoc spec-url="api-definition.json"></redoc>
+    <div class="billivo-header">
+        <img src="assets/favicon.png" alt="Billivo Logo">
+        <h1>Billivo API</h1>
+    </div>
+    <div id="redoc-container"></div>
     <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+    <script>
+        Redoc.init(
+            'api-definition.json',
+            {
+                scrollYOffset: 50,
+                theme: {
+                    colors: {
+                        primary: {
+                            main: '#7F56D9'
+                        },
+                        success: {
+                            main: '#4cc9f0'
+                        },
+                        warning: {
+                            main: '#ffd166'
+                        },
+                        error: {
+                            main: '#A81B1B'
+                        },
+                        text: {
+                            primary: '#212529',
+                            secondary: '#4B5563'
+                        },
+                        border: {
+                            dark: '#dee2e6',
+                            light: '#e9ecef'
+                        }
+                    },
+                    typography: {
+                        fontSize: '14px',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                        headings: {
+                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                            fontWeight: '600'
+                        },
+                        code: {
+                            fontSize: '13px',
+                            fontFamily: 'Monaco, Consolas, "Courier New", monospace'
+                        }
+                    },
+                    sidebar: {
+                        backgroundColor: '#F5F3F7',
+                        textColor: '#212529',
+                        activeTextColor: '#7F56D9',
+                        groupItems: {
+                            activeBackgroundColor: '#F1EDFB',
+                            activeTextColor: '#7F56D9',
+                            textTransform: 'none'
+                        },
+                        level1Items: {
+                            activeBackgroundColor: '#F1EDFB',
+                            activeTextColor: '#7F56D9',
+                            textTransform: 'none'
+                        },
+                        arrow: {
+                            color: '#7F56D9'
+                        }
+                    },
+                    rightPanel: {
+                        backgroundColor: '#212529',
+                        textColor: '#ffffff'
+                    },
+                    codeBlock: {
+                        backgroundColor: '#2d3748'
+                    }
+                },
+                hideDownloadButton: false,
+                disableSearch: false,
+                expandResponses: '200,201',
+                jsonSampleExpandLevel: 2,
+                hideSingleRequestSampleTab: true,
+                menuToggle: true,
+                nativeScrollbars: false,
+                pathInMiddlePanel: false,
+                requiredPropsFirst: true,
+                sortPropsAlphabetically: true,
+                expandDefaultServerVariables: true,
+                showExtensions: true
+            },
+            document.getElementById('redoc-container')
+        );
+    </script>
 </body>
 </html>
