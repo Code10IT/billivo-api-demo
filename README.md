@@ -384,14 +384,51 @@ curl -X POST https://06nii0nn03.execute-api.eu-west-1.amazonaws.com/invoice \
     "header": {
       "invoiceNumber": "FAC-2025-001234",
       "invoiceType": "F1",
+      "invoiceDate": "2025-09-28T14:38:15.000Z",
       "paymentTermName": "30 days",
       "paymentTermDays": 30,
       "paymentType": "Bank Transfer",
       "paymentTypeDescription": "ES1234567890123456789012",
       "dueDate": "2025-12-28",
-      ...
+      "currency": "EUR",
+      "irpf": 0,
+      "customer": {
+        "customerName": "ACME Corporation",
+        "nationalId": "B12345678",
+        "addressStreet": "Calle Principal",
+        "addressNumber": "123",
+        "postalCode": "08001",
+        "city": "Barcelona",
+        "country": "ES",
+        "mailAddress": "cliente@acme.com"
+      },
+      "issuer": {
+        "name": "Mi Empresa SL",
+        "nationalId": "B99540254",
+        "addressStreet": "C/ de la Diputació",
+        "addressNumber": "180",
+        "postalCode": "08011",
+        "city": "Barcelona",
+        "country": "ES",
+        "vatId": "ESB99540254",
+        "mailAddress": "facturacion@miempresa.com"
+      },
+      "taxType": "01",
+      "regimeKey": "01"
     },
-    "items": [ ... ]
+    "items": [
+      {
+        "itemId": "1",
+        "name": "Servicios Profesionales",
+        "type": "Service",
+        "description": "Consultoría técnica",
+        "unitPrice": 100,
+        "quantity": 5,
+        "vatPercentage": 21,
+        "discountPercentage": 0,
+        "totalExcTax": 500
+      }
+    ]
   }'
 ```
 
