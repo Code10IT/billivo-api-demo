@@ -3,12 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "API for creating invoices with header and line items",
-    "version": "1.1.0",
-    "x-logo": {
-      "url": "assets/favicon.png",
-      "altText": "Billivo Logo",
-      "href": "https://billivo.com"
-    }
+    "version": "1.1.0"
   },
   "servers": [
     {
