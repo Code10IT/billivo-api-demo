@@ -433,7 +433,6 @@
           "paymentTermName",
           "paymentTermDays",
           "paymentType",
-          "paymentTypeDescription",
           "dueDate",
           "issuer",
           "taxType",

@@ -761,7 +761,6 @@ Todos los errores siguen el siguiente formato:
 - `paymentTermName`
 - `paymentTermDays`
 - `paymentType`
-- `paymentTypeDescription`
 - `dueDate`
 - `issuer` (con campos obligatorios: `name`, `nationalId`, `city`, `country`)
 - `taxType`
@@ -771,6 +770,7 @@ Todos los errores siguen el siguiente formato:
 ### Header (Opcionales)
 
 - `invoiceNumber` (obligatorio solo en modo ERP)
+- `paymentTypeDescription`
 - `invoiceDate`
 - `operationDate`
 - `previousInvoiceNumber`
