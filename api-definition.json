@@ -669,12 +669,12 @@
           },
           "name": {
             "type": "string",
-            "maxLength": 255,
+            "maxLength": 60,
             "example": "Professional Services"
           },
           "description": {
             "type": "string",
-            "maxLength": 255
+            "maxLength": 254
           },
           "type": {
             "type": "string",
