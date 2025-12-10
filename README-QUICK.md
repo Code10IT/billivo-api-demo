@@ -155,7 +155,9 @@ curl -X POST https://api.billivo.com/invoice \
 - `irpf`: Porcentaje de retención (0-100)
 
 ### Header (Opcionales)
-- `paymentTypeDescription`: Descripción/número de cuenta
+- `paymentTypeDescription`: Descripción/número de cuenta (IBAN para transferencias)
+- `bankName`: Nombre del banco (para transferencias bancarias)
+- `SWIFT`: Código SWIFT/BIC del banco (8 u 11 caracteres)
 
 ### Customer (Obligatorios)
 - `customerName`: Nombre del cliente

@@ -329,6 +329,7 @@ curl -X POST https://api.billivo.com/invoice \
       "paymentType": "Bank Transfer",
       "paymentTypeDescription": "ES1234567890123456789012",
       "bankName": "Santander",
+      "SWIFT": "BSCHESMMXXX",
       "dueDate": "2025-12-28",
       "currency": "EUR",
       "irpf": 1,
@@ -539,6 +540,7 @@ curl -X PATCH "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&inv
     "correctedInvoiceNumber": "",
     "correctiveType": null,
     "bankName": "Santander",
+    "SWIFT": "BSCHESMMXXX",
     "paymentTermName": "30 days",
     "paymentTermDays": 30,
     "paymentType": "Bank Transfer",
@@ -777,6 +779,7 @@ Todos los errores siguen el siguiente formato:
 - `correctedInvoiceNumber` (obligatorio para facturas rectificativas)
 - `correctiveType` (obligatorio para facturas rectificativas)
 - `bankName`
+- `SWIFT` (código SWIFT/BIC del banco, 8 u 11 caracteres)
 - `additionalNotes`
 - `currency` (por defecto: EUR)
 - `discount`
