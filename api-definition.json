@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Billivo API",
-    "description": "API for creating invoices with header and line items",
-    "version": "1.1.0"
+    "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -50,13 +50,14 @@
               }
             }
           }
-        }
+        },
+        "tags": ["Authentication"]
       }
     },
     "/invoice": {
       "post": {
         "summary": "Create a new invoice",
-        "description": "Creates a new invoice with header information and line items",
+        "description": "Creates an invoice (ordinary or rectificative), registers it in Veri*Factu and returns the PDF.\n\n- NON_ERP company: do not send `invoiceNumber`. Billivo numbers the invoice from the series in `header.formatId`, or from the default series of the type (see `GET /invoice/series`).\n- ERP company: send `invoiceNumber`. A number that is already on a registered invoice of the company is rejected.",
         "security": [
           {
             "BearerAuth": []
@@ -104,7 +105,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error. Also returned when the invoice cannot be registered, for example: the ERP invoiceNumber is already registered, the formatId series does not exist or does not number this invoice type, or the company has no default series. The `error` field has the reason.",
             "content": {
               "application/json": {
                 "schema": {
@@ -113,7 +114,30 @@
               }
             }
           }
-        }
+        },
+        "tags": ["Invoices"],
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "description": "If `true`, Billivo sends the PDF to `customer.mailAddress`. Billivo does not send it for F2 and R5 invoices, or when the customer has no email. A failed email does not fail the request: see `emailSent` in the response.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "description": "Language of the PDF. Without it, the PDF uses the language of the company. A customer outside Spain always gets the PDF in English.",
+            "schema": {
+              "type": "string",
+              "enum": ["es", "en", "ca", "gl", "eu"]
+            }
+          }
+        ]
       },
       "get": {
         "summary": "Get all invoices or specific invoice",
@@ -183,6 +207,16 @@
                 "cancelled"
               ]
             }
+          },
+          {
+            "name": "pdf",
+            "in": "query",
+            "required": false,
+            "description": "If `true`, each invoice includes its stored PDF in `base64pdf`. Without it, `base64pdf` is null.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -226,7 +260,8 @@
               }
             }
           }
-        }
+        },
+        "tags": ["Invoices"]
       },
       "patch": {
         "summary": "Update invoice status",
@@ -310,6 +345,582 @@
           },
           "500": {
             "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Invoices"]
+      }
+    },
+    "/invoice/series": {
+      "get": {
+        "tags": ["Invoice series"],
+        "summary": "List the invoice series",
+        "description": "Returns the F and C series of the company of the token.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Series of the company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "series": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InvoiceSeries"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Invoice series"],
+        "summary": "Create an invoice series",
+        "description": "Creates a series for the company of the token. The first series of a type becomes the default series of that type.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoiceSeriesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Series created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "series": {
+                      "$ref": "#/components/schemas/InvoiceSeries"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation errors, one message per invalid field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Another series of the company already prints numbers with the same prefix, year and separators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses/export": {
+      "get": {
+        "tags": ["Expenses"],
+        "summary": "Export the expenses of a date range",
+        "description": "Without `format`, returns a link to a ZIP file with an Excel of the expenses (and the receipts if `includeImages=true`). With `format=json`, returns one page of expenses.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "description": "First expense date, YYYY-MM-DD.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "description": "Last expense date (included), YYYY-MM-DD.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "description": "`json` for a page of expenses. Without it, a ZIP file.",
+            "schema": {
+              "type": "string",
+              "enum": ["json"]
+            }
+          },
+          {
+            "name": "includeImages",
+            "in": "query",
+            "required": false,
+            "description": "ZIP only. If `true`, the ZIP includes the receipt files.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "JSON only.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "JSON only.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ZIP link, or one page of expenses with format=json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "title": "ZIP file",
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "Presigned link. It expires after 5 minutes."
+                        },
+                        "fileName": {
+                          "type": "string",
+                          "example": "expenses_2026-01-01_2026-03-31.zip"
+                        }
+                      }
+                    },
+                    {
+                      "title": "JSON page",
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "expenses": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Expense"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "from or to is missing or not a valid range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The company does not have Billivo Gastos access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Billivo Gastos request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses/erp": {
+      "get": {
+        "tags": ["Expenses"],
+        "summary": "Get the expenses to register in the ERP",
+        "description": "Returns the confirmed expenses that no ERP registered yet, in order of expenseId. To get the next page, send `after` = the last expenseId of this page. An empty `expenses` array means there are no more.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "description": "The last expenseId of the previous page.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pending expenses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "expenses": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Expense"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "after is not an expenseId",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The company does not have Billivo Gastos access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Billivo Gastos request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Expenses"],
+        "summary": "Confirm the expenses registered in the ERP",
+        "description": "Stores the ERP id of each expense. After this, the expense is not in `GET /expenses/erp` and users cannot edit or delete it in Billivo Gastos. You can send the same erpId again, so a retry is safe.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["confirmed"],
+                "properties": {
+                  "confirmed": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 500,
+                    "items": {
+                      "type": "object",
+                      "required": ["expenseId", "erpId"],
+                      "properties": {
+                        "expenseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "erpId": {
+                          "description": "Text or number, 1 to 100 characters.",
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "confirmed": [
+                    {
+                      "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+                      "erpId": "FAC-88"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result per expense",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    },
+                    "rejected": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "description": "Expenses that do not exist, are not confirmed, are deleted, or already have a different erpId."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The company does not have Billivo Gastos access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Billivo Gastos request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses/categories": {
+      "get": {
+        "tags": ["Expenses"],
+        "summary": "List the expense categories",
+        "description": "Returns the expense categories of the company. A categoryId never changes, so the ERP can map each one to an account.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "categoryId": {
+                            "type": "string",
+                            "example": "transport"
+                          },
+                          "categoryName": {
+                            "type": "string",
+                            "example": "Transporte"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "A category is deactivated, never deleted."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The company does not have Billivo Gastos access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Billivo Gastos request failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -463,7 +1074,8 @@
           "invoiceNumber": {
             "type": "string",
             "maxLength": 60,
-            "example": "INV-2025-001234"
+            "example": "INV-2025-001234",
+            "description": "ERP only: required. A NON_ERP company cannot send it, Billivo generates it."
           },
           "previousInvoiceNumber": {
             "type": "string",
@@ -555,9 +1167,9 @@
           },
           "taxType": {
             "type": "string",
-            "description": "Type of tax applicable.",
-            "default": "01",
-            "maxLength": 2
+            "enum": ["01", "02", "03", "05"],
+            "description": "Tax: 01 IVA, 02 IPSI (Ceuta and Melilla), 03 IGIC (Canary Islands), 05 other.",
+            "default": "01"
           },
           "regimeKey": {
             "type": "string",
@@ -588,6 +1200,12 @@
               "orderReference": "PO-2025-123",
               "salesAgent": "John Doe"
             }
+          },
+          "formatId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "NON_ERP only. The id of the series that numbers the invoice, from `GET /invoice/series`. The series must be of type F for an F invoice and of type C for an R invoice. Without it, Billivo uses the default series of the type. An ERP company cannot send this field.",
+            "example": 3
           }
         }
       },
@@ -739,6 +1357,31 @@
               "warranty": "2 years",
               "supplier": "ACME Corp"
             }
+          },
+          "equivalenceSurcharge": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Equivalence surcharge rate (recargo de equivalencia) in %. Send it together with `equivalenceSurchargeTax`, or send neither.",
+            "example": 5.2
+          },
+          "equivalenceSurchargeTax": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Equivalence surcharge amount of the line. Send it together with `equivalenceSurcharge`.",
+            "example": 26.0
+          },
+          "calificacionOperacion": {
+            "type": "string",
+            "enum": ["S1", "S2", "N1", "N2"],
+            "default": "S1",
+            "description": "Veri*Factu operation type: S1 subject, S2 subject with reverse charge, N1 and N2 not subject."
+          },
+          "operacionExenta": {
+            "type": "string",
+            "description": "Veri*Factu exemption cause (for example E1). Send it for an exempt line.",
+            "example": "E1"
           }
         }
       },
@@ -912,6 +1555,11 @@
             ],
             "description": "Current status of the invoice. 'validated' indicates the invoice has been validated and is ready to be sent.",
             "example": "sent"
+          },
+          "base64pdf": {
+            "type": "string",
+            "nullable": true,
+            "description": "PDF of the invoice in base64 (without the data: prefix). Only in `GET /invoice?pdf=true`."
           }
         }
       },
@@ -925,6 +1573,10 @@
           "base64pdf": {
             "type": "string",
             "example": "data:application/pdf;filename=generated.pdf;base64..."
+          },
+          "emailSent": {
+            "type": "boolean",
+            "description": "True if Billivo sent the invoice to the customer (query parameter `email=true`)."
           }
         }
       },
@@ -937,9 +1589,340 @@
             "items": {
               "$ref": "#/components/schemas/Invoice"
             }
+          },
+          "message": {
+            "type": "string",
+            "example": "GET successful"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer",
+                "example": 1
+              },
+              "limit": {
+                "type": "integer",
+                "example": 20
+              },
+              "total": {
+                "type": "integer",
+                "example": 34
+              },
+              "totalPages": {
+                "type": "integer",
+                "example": 2
+              }
+            }
           }
         }
+      },
+      "InvoiceSeries": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Send it in `header.formatId`.",
+            "example": 3
+          },
+          "name": {
+            "type": "string",
+            "example": "Tienda online"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["F", "C"],
+            "description": "F numbers invoices (F1, F2). C numbers rectificatives (R1, R5)."
+          },
+          "default": {
+            "type": "boolean",
+            "description": "Billivo uses the default series of the type when the invoice has no formatId."
+          },
+          "invoicePrefix": {
+            "type": "string",
+            "example": "WEB"
+          },
+          "invoiceYear": {
+            "type": "integer",
+            "enum": [0, 2, 4],
+            "description": "Digits of the year in the number. 0 means no year.",
+            "example": 4
+          },
+          "invoiceDigits": {
+            "type": "integer",
+            "example": 5
+          },
+          "firstSeparator": {
+            "type": "string",
+            "description": "Between the prefix and the year.",
+            "example": "-"
+          },
+          "secondSeparator": {
+            "type": "string",
+            "description": "Between the year and the counter.",
+            "example": "/"
+          }
+        },
+        "example": {
+          "id": 3,
+          "name": "Tienda online",
+          "type": "F",
+          "default": false,
+          "invoicePrefix": "WEB",
+          "invoiceYear": 4,
+          "invoiceDigits": 5,
+          "firstSeparator": "-",
+          "secondSeparator": "/"
+        }
+      },
+      "CreateInvoiceSeriesRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "invoicePrefix",
+          "invoiceYear",
+          "invoiceDigits"
+        ],
+        "description": "The series above prints numbers as WEB-2026/00001. A series with a year starts again from 1 in a new year.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Tienda online"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["F", "C"],
+            "description": "F for invoices, C for rectificatives."
+          },
+          "invoicePrefix": {
+            "type": "string",
+            "maxLength": 4,
+            "description": "Can be empty.",
+            "example": "WEB"
+          },
+          "invoiceYear": {
+            "type": "integer",
+            "enum": [0, 2, 4],
+            "example": 4
+          },
+          "invoiceDigits": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 15,
+            "example": 5
+          },
+          "firstSeparator": {
+            "type": "string",
+            "maxLength": 1,
+            "default": "",
+            "example": "-"
+          },
+          "secondSeparator": {
+            "type": "string",
+            "maxLength": 1,
+            "default": "",
+            "example": "/"
+          },
+          "firstNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000000000,
+            "default": 1,
+            "description": "The number of the first invoice of the series. Use it to continue a numbering that started in another system.",
+            "example": 1
+          }
+        }
+      },
+      "ValidationErrorsResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "'invoiceDigits' debe ser un número entero entre 1 y 15."
+            ]
+          }
+        }
+      },
+      "ExpenseVatLine": {
+        "type": "object",
+        "properties": {
+          "vatPercent": {
+            "type": "number",
+            "example": 21
+          },
+          "taxBase": {
+            "type": "number",
+            "example": 100
+          },
+          "vatAmount": {
+            "type": "number",
+            "example": 21
+          }
+        }
+      },
+      "Expense": {
+        "type": "object",
+        "description": "A confirmed expense. Amounts are numbers, dates are YYYY-MM-DD.",
+        "properties": {
+          "expenseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "expenseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "operationDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "number",
+            "example": 121
+          },
+          "currency": {
+            "type": "string",
+            "example": "EUR"
+          },
+          "taxBase": {
+            "type": "number",
+            "nullable": true,
+            "example": 100
+          },
+          "vatAmount": {
+            "type": "number",
+            "nullable": true,
+            "example": 21
+          },
+          "vatPercent": {
+            "type": "number",
+            "nullable": true,
+            "example": 21
+          },
+          "discountAmount": {
+            "type": "number",
+            "nullable": true
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "nullable": true,
+            "description": "Number of the supplier invoice."
+          },
+          "merchantName": {
+            "type": "string",
+            "nullable": true
+          },
+          "merchantTaxId": {
+            "type": "string",
+            "nullable": true
+          },
+          "merchantAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "recipientName": {
+            "type": "string",
+            "nullable": true
+          },
+          "recipientTaxId": {
+            "type": "string",
+            "nullable": true
+          },
+          "recipientAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "categoryId": {
+            "type": "string",
+            "description": "See `GET /expenses/categories`."
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "paymentMethodId": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentMethodName": {
+            "type": "string"
+          },
+          "documentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentTypeName": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "erpId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The id that the ERP sent in `POST /expenses/erp`."
+          },
+          "vatLines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpenseVatLine"
+            },
+            "description": "VAT breakdown, one line per VAT rate."
+          },
+          "receipt": {
+            "type": "object",
+            "properties": {
+              "fileName": {
+                "type": "string",
+                "nullable": true
+              },
+              "mimeType": {
+                "type": "string",
+                "nullable": true
+              },
+              "url": {
+                "type": "string",
+                "nullable": true,
+                "description": "Presigned link to the receipt file. It expires after 5 minutes."
+              }
+            }
+          }
+        },
+        "additionalProperties": true
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Get the OAuth2 token for all other calls."
+    },
+    {
+      "name": "Invoices",
+      "description": "Create, query and update invoices."
+    },
+    {
+      "name": "Invoice series",
+      "description": "Number series of the company. Only NON_ERP companies use them: an ERP sends its own invoiceNumber."
+    },
+    {
+      "name": "Expenses",
+      "description": "Expenses of Billivo Gastos. The company of the token must have Billivo Gastos access, else the API returns 403. The API only returns confirmed expenses that are not deleted."
+    }
+  ]
 }

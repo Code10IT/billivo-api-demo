@@ -1,4 +1,4 @@
-# API de Facturación Billivo - Guía de Integración
+# API de Billivo - Guía de Integración
 
 ## Índice
 
@@ -18,7 +18,7 @@
 
 ## Introducción
 
-La API de Billivo permite la creación, consulta y gestión de facturas electrónicas de forma programática. Esta API está diseñada para integrarse fácilmente en sistemas ERP, plataformas de e-commerce y aplicaciones de gestión empresarial.
+La API de Billivo permite crear, consultar y gestionar facturas electrónicas, gestionar las series de numeración y leer los gastos de Billivo Gastos de forma programática. Esta API está diseñada para integrarse fácilmente en sistemas ERP, plataformas de e-commerce y aplicaciones de gestión empresarial.
 
 ### Arquitectura Tecnológica
 
@@ -30,7 +30,11 @@ La API está construida sobre infraestructura AWS serverless. Esta arquitectura 
 - Creación de facturas ordinarias y rectificativas
 - Consulta de facturas con paginación
 - Actualización de estado de facturas
-- Generación automática de PDF en base64
+- Generación automática de PDF en base64, en cinco idiomas
+- Envío de la factura por email al cliente
+- Series de numeración propias (modo NO_ERP)
+- Recargo de equivalencia
+- Exportación de gastos de Billivo Gastos y sincronización con el ERP
 - Soporte para múltiples tipos de IVA y descuentos
 - Campos personalizables para adaptarse a necesidades específicas
 - Tokens JWT (JSON Web Tokens) para autenticación segura
@@ -130,6 +134,8 @@ La API de Billivo soporta dos modos de operación según las necesidades del cli
 - Debe proporcionar el campo `invoiceNumber` en la petición
 - Útil para empresas que ya tienen un sistema de numeración establecido
 - Mayor control sobre la secuencia de facturas
+- La API rechaza un `invoiceNumber` que ya está en una factura registrada de la empresa
+- No se puede enviar `formatId`
 
 **Cuándo usar**:
 
@@ -154,8 +160,9 @@ La API de Billivo soporta dos modos de operación según las necesidades del cli
 
 - Billivo gestiona automáticamente la numeración de facturas
 - No es necesario incluir el campo `invoiceNumber` en la petición
-- La API asigna el siguiente número disponible en la secuencia
-- Numeración automática con formato `YYYY-NNNNNNNNNN` para facturas normales y `R-YYYY-NNNNNNNNNN` para rectificativas
+- La API asigna el siguiente número de una serie de la empresa (ver [Series de Numeración](#5-listar-series-de-numeración))
+- Con `header.formatId` eliges la serie. Sin él, Billivo usa la serie por defecto del tipo: la serie de tipo `F` para facturas y la de tipo `C` para rectificativas
+- Son las mismas series y contadores que usa la app de Billivo
 
 **Cuándo usar**:
 
@@ -209,6 +216,13 @@ POST /invoice
 
 Crea una nueva factura (ordinaria o rectificativa).
 
+**Parámetros Query** (opcionales):
+
+| Parámetro | Tipo    | Descripción                                                                                                                                        |
+| --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `email`   | boolean | Con `true`, Billivo envía el PDF a `customer.mailAddress`. No aplica a facturas F2 y R5 ni a clientes sin email                                    |
+| `lang`    | string  | Idioma del PDF: `es`, `en`, `ca`, `gl`, `eu`. Sin él se usa el idioma de la empresa. Un cliente de fuera de España siempre recibe el PDF en inglés |
+
 **Headers**:
 
 ```
@@ -223,27 +237,28 @@ Content-Type: application/json
 - `201 Created`: Factura creada exitosamente
 - `400 Bad Request`: Error de validación
 - `401 Unauthorized`: Token inválido o ausente
-- `500 Internal Server Error`: Error del servidor
+- `500 Internal Server Error`: Error del servidor. También si la factura no se puede registrar: número ERP ya registrado, serie `formatId` inexistente o de otro tipo, o empresa sin serie por defecto. El campo `error` indica el motivo
 
 ---
 
 ### 3. Consultar Facturas
 
 ```
-GET /invoice?userEmail={email}&invoiceNumber={numero}&page={pagina}&limit={limite}&status={estado}
+GET /invoice?userEmail={email}&invoiceNumber={numero}&page={pagina}&limit={limite}&status={estado}&pdf={true|false}
 ```
 
 Obtiene todas las facturas de un usuario o una factura específica.
 
 **Parámetros Query**:
 
-| Parámetro       | Tipo    | Requerido | Descripción                                                                                               |
-| --------------- | ------- | --------- | --------------------------------------------------------------------------------------------------------- |
-| `userEmail`     | string  | Sí        | Email del usuario propietario de las facturas                                                             |
-| `invoiceNumber` | string  | No        | Número de factura específica a consultar                                                                  |
-| `page`          | integer | No        | Número de página (por defecto: 1)                                                                         |
-| `limit`         | integer | No        | Elementos por página (por defecto: 20, máximo: 100)                                                       |
-| `status`        | string  | No        | Filtrar por estado: `draft`, `sent`, `paid`, `overdue`, `validated`, `validated_with_errors`, `cancelled` |
+| Parámetro       | Tipo    | Requerido | Descripción                                                                                                        |
+| --------------- | ------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| `userEmail`     | string  | Sí        | Email del usuario propietario de las facturas                                                                      |
+| `invoiceNumber` | string  | No        | Número de factura específica a consultar                                                                           |
+| `page`          | integer | No        | Número de página (por defecto: 1)                                                                                  |
+| `limit`         | integer | No        | Elementos por página (por defecto: 20, máximo: 100)                                                                |
+| `status`        | string  | No        | Filtrar por estado: `draft`, `sent`, `paid`, `overdue`, `validated`, `validated_with_errors`, `cancelled`          |
+| `pdf`           | boolean | No        | Con `true`, cada factura incluye su PDF en `base64pdf` (base64 sin prefijo `data:`). Sin él, `base64pdf` es `null` |
 
 **Ejemplo de Respuesta (200)**:
 
@@ -260,7 +275,8 @@ Obtiene todas las facturas de un usuario o una factura específica.
         "customer": { ... },
         "issuer": { ... }
       },
-      "items": [ ... ]
+      "items": [ ... ],
+      "base64pdf": null
     }
   ],
   "message": "GET successful",
@@ -310,6 +326,202 @@ Actualiza el estado de una factura existente.
 - `401 Unauthorized`: No autorizado
 - `404 Not Found`: Factura no encontrada
 - `500 Internal Server Error`: Error del servidor
+
+---
+
+### 5. Listar Series de Numeración
+
+```
+GET /invoice/series
+```
+
+Devuelve las series de la empresa del token. Solo las usan las empresas en modo NO_ERP.
+
+**Ejemplo de Respuesta (200)**:
+
+```json
+{
+  "series": [
+    {
+      "id": 1,
+      "name": "General",
+      "type": "F",
+      "default": true,
+      "invoicePrefix": "",
+      "invoiceYear": 4,
+      "invoiceDigits": 10,
+      "firstSeparator": "",
+      "secondSeparator": "-"
+    },
+    {
+      "id": 3,
+      "name": "Tienda online",
+      "type": "F",
+      "default": false,
+      "invoicePrefix": "WEB",
+      "invoiceYear": 4,
+      "invoiceDigits": 5,
+      "firstSeparator": "-",
+      "secondSeparator": "/"
+    }
+  ]
+}
+```
+
+- `type`: `F` numera facturas (F1, F2) y `C` numera rectificativas (R1, R5)
+- `default`: la serie que Billivo usa cuando la factura no tiene `formatId`
+- Formato del número: prefijo, primer separador, año, segundo separador y contador. La serie `Tienda online` genera `WEB-2026/00001`
+
+---
+
+### 6. Crear Serie de Numeración
+
+```
+POST /invoice/series
+```
+
+**Body**:
+
+```json
+{
+  "name": "Tienda online",
+  "type": "F",
+  "invoicePrefix": "WEB",
+  "invoiceYear": 4,
+  "invoiceDigits": 5,
+  "firstSeparator": "-",
+  "secondSeparator": "/",
+  "firstNumber": 1
+}
+```
+
+| Campo             | Obligatorio | Descripción                                                                      |
+| ----------------- | ----------- | -------------------------------------------------------------------------------- |
+| `name`            | Sí          | Máximo 100 caracteres                                                            |
+| `type`            | Sí          | `F` (facturas) o `C` (rectificativas)                                            |
+| `invoicePrefix`   | Sí          | Máximo 4 caracteres. Puede ser vacío                                             |
+| `invoiceYear`     | Sí          | Dígitos del año: `0` (sin año), `2` o `4`                                        |
+| `invoiceDigits`   | Sí          | Dígitos del contador, de 1 a 15                                                  |
+| `firstSeparator`  | No          | Un carácter o vacío. Va entre el prefijo y el año                                |
+| `secondSeparator` | No          | Un carácter o vacío. Va entre el año y el contador                               |
+| `firstNumber`     | No          | Número de la primera factura (por defecto 1). Útil para continuar una numeración |
+
+La primera serie de un tipo pasa a ser la serie por defecto de ese tipo. Una serie con año vuelve a empezar en 1 cada año.
+
+**Respuestas**:
+
+- `201 Created`: `{ "series": { ... } }`
+- `400 Bad Request`: `{ "error": [ ... ] }`, un mensaje por campo inválido
+- `401 Unauthorized`: No autorizado
+- `409 Conflict`: Otra serie de la empresa ya genera números con el mismo prefijo, año y separadores
+
+---
+
+### 7. Billivo Gastos: Exportar Gastos
+
+Los endpoints `/expenses/*` leen los gastos de Billivo Gastos de la empresa del token. La empresa debe tener acceso a Billivo Gastos, si no la API responde `403`. Solo se devuelven gastos confirmados y no eliminados.
+
+```
+GET /expenses/export?from={YYYY-MM-DD}&to={YYYY-MM-DD}&format=json&page={pagina}&limit={limite}
+```
+
+| Parámetro       | Tipo    | Requerido | Descripción                                                            |
+| --------------- | ------- | --------- | ---------------------------------------------------------------------- |
+| `from`          | date    | Sí        | Primera fecha de gasto                                                 |
+| `to`            | date    | Sí        | Última fecha de gasto (incluida)                                       |
+| `format`        | string  | No        | `json` devuelve una página de gastos. Sin él, devuelve un fichero ZIP  |
+| `includeImages` | boolean | No        | Solo ZIP. Con `true`, el ZIP incluye los tickets y facturas escaneados |
+| `page`          | integer | No        | Solo JSON. Por defecto 1                                               |
+| `limit`         | integer | No        | Solo JSON. Por defecto 100, máximo 500                                 |
+
+**Respuesta ZIP (200)**: un enlace que caduca a los 5 minutos. El ZIP contiene un Excel con los gastos.
+
+```json
+{
+  "url": "https://...",
+  "fileName": "expenses_2026-01-01_2026-03-31.zip"
+}
+```
+
+**Respuesta JSON (200)**:
+
+```json
+{
+  "page": 1,
+  "limit": 100,
+  "total": 2,
+  "expenses": [ { ... } ]
+}
+```
+
+Ver [Estructura de Gasto](#estructura-de-gasto).
+
+---
+
+### 8. Billivo Gastos: Sincronización con el ERP
+
+```
+GET /expenses/erp?after={expenseId}&limit={limite}
+POST /expenses/erp
+```
+
+Flujo recomendado:
+
+1. `GET /expenses/erp` devuelve los gastos confirmados que ningún ERP ha registrado todavía, ordenados por `expenseId`. `limit` es 100 por defecto y 500 como máximo
+2. Para la página siguiente, envía `after` con el último `expenseId` de la página. Un array `expenses` vacío indica que no quedan más
+3. Registra los gastos en el ERP
+4. `POST /expenses/erp` con el id que cada gasto recibió en el ERP
+
+**Respuesta GET (200)**:
+
+```json
+{
+  "limit": 100,
+  "expenses": [ { ... } ]
+}
+```
+
+**Body POST** (de 1 a 500 elementos, `erpId` de 1 a 100 caracteres, texto o número):
+
+```json
+{
+  "confirmed": [
+    { "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77", "erpId": "FAC-88" }
+  ]
+}
+```
+
+**Respuesta POST (200)**:
+
+```json
+{
+  "confirmed": ["8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77"],
+  "rejected": []
+}
+```
+
+- Un gasto confirmado sale del `GET /expenses/erp` y ya no se puede editar ni eliminar en Billivo Gastos
+- `rejected` lista los gastos que no existen, no están confirmados, están eliminados o ya tienen otro `erpId`
+- Enviar otra vez el mismo `erpId` es válido, así que puedes repetir una llamada que falló por timeout
+
+---
+
+### 9. Billivo Gastos: Categorías
+
+```
+GET /expenses/categories
+```
+
+```json
+{
+  "categories": [
+    { "categoryId": "transport", "categoryName": "Transporte", "active": true },
+    { "categoryId": "meals", "categoryName": "Comidas", "active": true }
+  ]
+}
+```
+
+Un `categoryId` nunca cambia y una categoría no se elimina, solo se desactiva (`active: false`). El ERP puede asociar cada `categoryId` a una cuenta contable.
 
 ---
 
@@ -527,6 +739,66 @@ curl -X PATCH "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&inv
 
 ---
 
+### Ejemplo 6: Crear Factura con una Serie y Enviarla por Email
+
+```bash
+# 1. Consultar las series para obtener el id
+curl -X GET "https://api.billivo.com/invoice/series" \
+  -H "Authorization: Bearer {tu_token}"
+
+# 2. Crear la factura con formatId, enviarla al cliente y generar el PDF en catalán
+curl -X POST "https://api.billivo.com/invoice?email=true&lang=ca" \
+  -H "Authorization: Bearer {tu_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "header": {
+      "invoiceType": "F1",
+      "formatId": 3,
+      ...
+    },
+    "items": [ ... ]
+  }'
+```
+
+---
+
+### Ejemplo 7: Factura con Recargo de Equivalencia
+
+```json
+"items": [
+  {
+    "name": "Material de oficina",
+    "unitPrice": 500,
+    "quantity": 1,
+    "vatPercentage": 21,
+    "equivalenceSurcharge": 5.2,
+    "equivalenceSurchargeTax": 26
+  }
+]
+```
+
+---
+
+### Ejemplo 8: Sincronizar Gastos con el ERP
+
+```bash
+# 1. Leer la primera página de gastos pendientes
+curl -X GET "https://api.billivo.com/expenses/erp?limit=100" \
+  -H "Authorization: Bearer {tu_token}"
+
+# 2. Leer la página siguiente
+curl -X GET "https://api.billivo.com/expenses/erp?limit=100&after=8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77" \
+  -H "Authorization: Bearer {tu_token}"
+
+# 3. Confirmar los gastos registrados en el ERP
+curl -X POST "https://api.billivo.com/expenses/erp" \
+  -H "Authorization: Bearer {tu_token}" \
+  -H "Content-Type: application/json" \
+  -d '{ "confirmed": [ { "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77", "erpId": "FAC-88" } ] }'
+```
+
+---
+
 ## Estructura de Datos
 
 ### Estructura de Factura
@@ -536,6 +808,7 @@ curl -X PATCH "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&inv
   "header": {
     "invoiceType": "F1",
     "invoiceNumber": "2025-0000000028",
+    "formatId": null,
     "previousInvoiceNumber": "2025-0000000027",
     "correctedInvoiceNumber": "",
     "correctiveType": null,
@@ -612,6 +885,10 @@ curl -X PATCH "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&inv
       "discountPercentage": 10,
       "discountAmount": 50,
       "totalExcTax": 500,
+      "equivalenceSurcharge": 0,
+      "equivalenceSurchargeTax": 0,
+      "calificacionOperacion": "S1",
+      "operacionExenta": null,
       "customFields": {
         "productCode": "SKU-12345",
         "warranty": "2 years",
@@ -651,6 +928,51 @@ curl -X PATCH "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&inv
 - `overdue`: Vencida
 - `validated_with_errors`: Validada con errores
 - `cancelled`: Cancelada
+
+### Tipos de Impuesto (taxType)
+
+- `01`: IVA
+- `02`: IPSI (Ceuta y Melilla)
+- `03`: IGIC (Canarias)
+- `05`: Otro
+
+### Estructura de Gasto
+
+Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen esta forma. Los importes son números y las fechas tienen formato `YYYY-MM-DD`.
+
+```json
+{
+  "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+  "title": "Taxi aeropuerto",
+  "expenseDate": "2026-03-12",
+  "operationDate": null,
+  "totalAmount": 121,
+  "currency": "EUR",
+  "taxBase": 100,
+  "vatAmount": 21,
+  "vatPercent": 21,
+  "invoiceNumber": "T-4411",
+  "merchantName": "Taxi Barcelona SL",
+  "merchantTaxId": "B12345678",
+  "categoryId": "transport",
+  "categoryName": "Transporte",
+  "paymentMethodId": "2",
+  "paymentMethodName": "Tarjeta",
+  "documentTypeName": "Factura",
+  "erpId": null,
+  "vatLines": [{ "vatPercent": 21, "taxBase": 100, "vatAmount": 21 }],
+  "receipt": {
+    "fileName": "taxi.pdf",
+    "mimeType": "application/pdf",
+    "url": "https://..."
+  }
+}
+```
+
+- `vatLines`: desglose de IVA, una línea por tipo
+- `receipt.url`: enlace al ticket o factura escaneada. Caduca a los 5 minutos
+- `erpId`: el id que el ERP envió en `POST /expenses/erp`
+- La respuesta incluye además otros campos del gasto (dirección del emisor y del receptor, descuento, país, fechas de alta y modificación)
 
 ---
 
@@ -744,14 +1066,17 @@ Todos los errores siguen el siguiente formato:
 
 ## Códigos de Respuesta
 
-| Código | Descripción           | Significado                               |
-| ------ | --------------------- | ----------------------------------------- |
-| 200    | OK                    | Petición exitosa (GET, PATCH)             |
-| 201    | Created               | Factura creada exitosamente (POST)        |
-| 400    | Bad Request           | Error de validación en los datos enviados |
-| 401    | Unauthorized          | Autenticación fallida o token inválido    |
-| 404    | Not Found             | Recurso no encontrado                     |
-| 500    | Internal Server Error | Error interno del servidor                |
+| Código | Descripción           | Significado                                 |
+| ------ | --------------------- | ------------------------------------------- |
+| 200    | OK                    | Petición exitosa (GET, PATCH)               |
+| 201    | Created               | Factura creada exitosamente (POST)          |
+| 400    | Bad Request           | Error de validación en los datos enviados   |
+| 401    | Unauthorized          | Autenticación fallida o token inválido      |
+| 403    | Forbidden             | La empresa no tiene acceso a Billivo Gastos |
+| 404    | Not Found             | Recurso no encontrado                       |
+| 409    | Conflict              | La serie ya existe con el mismo formato     |
+| 500    | Internal Server Error | Error interno del servidor                  |
+| 502    | Bad Gateway           | Falló la petición a Billivo Gastos          |
 
 ---
 
@@ -771,7 +1096,8 @@ Todos los errores siguen el siguiente formato:
 
 ### Header (Opcionales)
 
-- `invoiceNumber` (obligatorio solo en modo ERP)
+- `invoiceNumber` (obligatorio en modo ERP, no permitido en modo NO_ERP)
+- `formatId` (solo modo NO_ERP, id de `GET /invoice/series`)
 - `paymentTypeDescription`
 - `invoiceDate`
 - `operationDate`
@@ -818,6 +1144,10 @@ Todos los errores siguen el siguiente formato:
 - `discountPercentage`
 - `discountAmount`
 - `totalExcTax`
+- `equivalenceSurcharge` (tipo del recargo de equivalencia, 0-100)
+- `equivalenceSurchargeTax` (cuota del recargo; se envían los dos o ninguno)
+- `calificacionOperacion` (`S1` sujeta, `S2` inversión del sujeto pasivo, `N1`/`N2` no sujeta; por defecto `S1`)
+- `operacionExenta` (causa de exención de Veri*Factu, por ejemplo `E1`)
 - `customFields`
 
 ---
@@ -859,11 +1189,14 @@ Cuando se crea una factura exitosamente, la API devuelve:
     "header": { ... },
     "items": [ ... ]
   },
-  "base64pdf": "data:application/pdf;filename=generated.pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9..."
+  "base64pdf": "data:application/pdf;filename=generated.pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9...",
+  "emailSent": false
 }
 ```
 
-El campo `base64pdf` contiene el PDF de la factura codificado en base64, listo para ser guardado o enviado al cliente.
+El campo `base64pdf` contiene el PDF de la factura codificado en base64, listo para ser guardado o enviado al cliente. Billivo también guarda el PDF, así que `GET /invoice?pdf=true` lo devuelve después.
+
+El campo `emailSent` es `true` si Billivo envió la factura al cliente (`email=true`). Un error en el email no hace fallar la petición: la factura ya está creada.
 
 ---
 
@@ -889,7 +1222,7 @@ El campo `base64pdf` contiene el PDF de la factura codificado en base64, listo p
 
 ### 4. Numeración de Facturas
 
-- En modo NO_ERP: No incluyas `invoiceNumber` en la petición
+- En modo NO_ERP: No incluyas `invoiceNumber` en la petición. Usa `formatId` para elegir la serie
 - En modo ERP: Asegúrate de que la numeración sea única y secuencial
 - Guarda siempre el `invoiceNumber` devuelto por la API
 
@@ -905,6 +1238,12 @@ El campo `base64pdf` contiene el PDF de la factura codificado en base64, listo p
 - Envía los valores reales (nuevos precios/cantidades) que deben quedar después de la rectificación
 - El sistema calculará automáticamente la diferencia con la factura original
 - Documenta claramente el motivo de la rectificación en `additionalNotes`
+
+### 7. Sincronización de Gastos
+
+- Pagina `GET /expenses/erp` con `after`, no con número de página: la lista de pendientes cambia mientras confirmas
+- Confirma cada página con `POST /expenses/erp` antes de pedir la siguiente
+- Descarga el ticket de `receipt.url` enseguida, el enlace caduca a los 5 minutos
 
 ---
 
@@ -926,7 +1265,7 @@ La API está desplegada utilizando servicios administrados de AWS:
 
 - Funciones serverless para cada endpoint:
   - `c10-egrow-token`: Gestión de autenticación OAuth2
-  - `c10-egrow-invoices`: Operaciones CRUD de facturas
+  - `c10-egrow-invoices`: Facturas, series de numeración y gastos
   - `c10-egrow-v1`: Endpoints versión 1
 - Escalado automático según demanda
 - Sin gestión de servidores
@@ -976,4 +1315,4 @@ Para dudas, problemas o sugerencias sobre la API, contacta con el equipo de Bill
 
 ---
 
-**Última actualización**: Noviembre 2025
+**Última actualización**: Septiembre 2026
