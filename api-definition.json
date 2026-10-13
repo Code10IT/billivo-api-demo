@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.2.1"
+    "version": "1.2.2"
   },
   "servers": [
     {
@@ -1844,6 +1844,17 @@
           "discountAmount": {
             "type": "number",
             "nullable": true
+          },
+          "irpfPercent": {
+            "type": "number",
+            "description": "IRPF withholding rate (%). 0 when the invoice has no withholding.",
+            "example": 15
+          },
+          "irpfAmount": {
+            "type": "number",
+            "nullable": true,
+            "description": "IRPF withholding amount, computed on taxBase. totalAmount is taxBase + VAT, so the net to pay is totalAmount - irpfAmount.",
+            "example": 15
           },
           "invoiceNumber": {
             "type": "string",

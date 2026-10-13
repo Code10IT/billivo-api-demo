@@ -977,6 +977,8 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
   "taxBase": 100,
   "vatAmount": 21,
   "vatPercent": 21,
+  "irpfPercent": 0,
+  "irpfAmount": 0,
   "invoiceNumber": "T-4411",
   "merchantName": "Taxi Barcelona SL",
   "merchantTaxId": "B12345678",
@@ -996,6 +998,7 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 ```
 
 - `vatLines`: desglose de IVA, una línea por tipo
+- `irpfPercent` e `irpfAmount`: tipo (%) y cuota de la retención de IRPF, calculada sobre `taxBase`. Sin retención, los dos valen `0`. `totalAmount` es base más IVA, así que el importe a pagar es `totalAmount - irpfAmount`
 - `receipt.url`: enlace al ticket o factura escaneada. Caduca a los 5 minutos
 - `erpId`: el id que el ERP envió en `POST /expenses/erp`
 - La respuesta incluye además otros campos del gasto (dirección del emisor y del receptor, descuento, país, fechas de alta y modificación)
