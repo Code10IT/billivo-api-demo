@@ -36,7 +36,6 @@ La API está construida sobre infraestructura AWS serverless. Esta arquitectura 
 - Recargo de equivalencia
 - Exportación de gastos de Billivo Gastos y sincronización con el ERP
 - Soporte para múltiples tipos de IVA y descuentos
-- Campos personalizables para adaptarse a necesidades específicas
 - Tokens JWT (JSON Web Tokens) para autenticación segura
 
 ---
@@ -79,6 +78,8 @@ Authorization: Basic {base64(username:password)}
 }
 ```
 
+Sin el header `Authorization: Basic`, la API responde `401` con `error: "invalid_request"`.
+
 ### 2. Usar el Token en las Peticiones
 
 Una vez obtenido el `access_token`, debe incluirse en todas las peticiones posteriores:
@@ -89,7 +90,7 @@ Una vez obtenido el `access_token`, debe incluirse en todas las peticiones poste
 Authorization: Bearer {access_token}
 ```
 
-**Nota importante**: Los tokens expiran después de 3600 segundos (1 hora - configurable). Utiliza el `refresh_token` para obtener un nuevo token cuando sea necesario.
+**Nota importante**: Los tokens expiran después de 3600 segundos (1 hora - configurable). La API no tiene un endpoint para canjear el `refresh_token`. Para renovar el token, llama otra vez a `POST /token` con las mismas credenciales Basic.
 
 ### 3. Detalles de Autenticación OAuth2
 
@@ -102,7 +103,7 @@ La API implementa el flujo **Resource Owner Password Credentials** de OAuth2:
 3. Si son válidas, retorna:
    - `access_token`: Token JWT para autorizar peticiones a la API
    - `id_token`: Token JWT con información del usuario (claims)
-   - `refresh_token`: Token para renovar el access_token sin re-autenticar
+   - `refresh_token`: La API lo devuelve, pero no tiene un endpoint para canjearlo
    - `expires_in`: Tiempo de expiración del token en segundos
 
 #### Tipos de Tokens
@@ -116,9 +117,8 @@ La API implementa el flujo **Resource Owner Password Credentials** de OAuth2:
 
 **Refresh Token**:
 
-- Permite obtener un nuevo `access_token` sin pedir credenciales nuevamente
-- Mayor tiempo de expiración que el access_token
-- Se debe almacenar de forma segura
+- `POST /token` lo devuelve, pero la API no tiene un endpoint para canjearlo
+- Para renovar el `access_token`, llama otra vez a `POST /token` con las mismas credenciales Basic
 
 ---
 
@@ -235,8 +235,8 @@ Content-Type: application/json
 **Respuestas**:
 
 - `201 Created`: Factura creada exitosamente
-- `400 Bad Request`: Error de validación
-- `401 Unauthorized`: Token inválido o ausente
+- `400 Bad Request`: Campos obligatorios ausentes o inválidos, o `dueDate` anterior a hoy. El campo `error` reúne todos los problemas en un solo texto
+- `401 Unauthorized`: Token inválido o ausente, o `issuer.mailAddress` de otra empresa
 - `500 Internal Server Error`: Error del servidor. También si la factura no se puede registrar: número ERP ya registrado, serie `formatId` inexistente o de otro tipo, o empresa sin serie por defecto. El campo `error` indica el motivo
 
 ---
@@ -558,7 +558,7 @@ curl -X POST https://api.billivo.com/invoice \
       "paymentTypeDescription": "ES1234567890123456789012",
       "bankName": "Santander",
       "SWIFT": "BSCHESMMXXX",
-      "dueDate": "2025-12-28",
+      "dueDate": "2030-12-31",
       "currency": "EUR",
       "irpf": 1,
       "customer": {
@@ -595,6 +595,7 @@ curl -X POST https://api.billivo.com/invoice \
         "quantity": 5,
         "vatPercentage": 21,
         "discountPercentage": 0,
+        "discountAmount": 0,
         "totalExcTax": 500
       }
     ]
@@ -613,12 +614,12 @@ curl -X POST https://api.billivo.com/invoice \
     "header": {
       "invoiceNumber": "FAC-2025-001234",
       "invoiceType": "F1",
-      "invoiceDate": "2025-09-28T14:38:15.000Z",
       "paymentTermName": "30 days",
       "paymentTermDays": 30,
       "paymentType": "Bank Transfer",
       "paymentTypeDescription": "ES1234567890123456789012",
-      "dueDate": "2025-12-28",
+      "bankName": "Santander",
+      "dueDate": "2030-12-31",
       "currency": "EUR",
       "irpf": 0,
       "customer": {
@@ -655,6 +656,7 @@ curl -X POST https://api.billivo.com/invoice \
         "quantity": 5,
         "vatPercentage": 21,
         "discountPercentage": 0,
+        "discountAmount": 0,
         "totalExcTax": 500
       }
     ]
@@ -678,7 +680,8 @@ curl -X POST https://api.billivo.com/invoice \
       "paymentTermDays": 30,
       "paymentType": "Bank Transfer",
       "paymentTypeDescription": "ES1234567890123456789012",
-      "dueDate": "2025-12-28",
+      "bankName": "Santander",
+      "dueDate": "2030-12-31",
       "additionalNotes": "Rectificación por error en precio unitario",
       "currency": "EUR",
       "irpf": 0,
@@ -697,6 +700,7 @@ curl -X POST https://api.billivo.com/invoice \
         "quantity": 5,
         "vatPercentage": 21,
         "discountPercentage": 0,
+        "discountAmount": 0,
         "totalExcTax": 400
       }
     ]
@@ -784,9 +788,13 @@ curl -X POST "https://api.billivo.com/invoice?email=true&lang=ca" \
 "items": [
   {
     "name": "Material de oficina",
+    "type": "Article",
     "unitPrice": 500,
     "quantity": 1,
     "vatPercentage": 21,
+    "discountPercentage": 0,
+    "discountAmount": 0,
+    "totalExcTax": 500,
     "equivalenceSurcharge": 5.2,
     "equivalenceSurchargeTax": 26
   }
@@ -835,7 +843,7 @@ curl -X POST "https://api.billivo.com/expenses/erp" \
     "paymentType": "Bank Transfer",
     "paymentTypeDescription": "ES1234567890123456789012",
     "invoiceDate": "2025-09-28T14:38:15.000Z",
-    "dueDate": "2025-12-28",
+    "dueDate": "2030-12-31",
     "operationDate": "2025-10-15",
     "additionalNotes": "Notas adicionales",
     "currency": "EUR",
@@ -915,6 +923,8 @@ curl -X POST "https://api.billivo.com/expenses/erp" \
 }
 ```
 
+**Nota**: La API acepta `header.discount`, `header.pos`, `header.currencyExchange`, `header.customFields` e `items[].customFields`, pero no los guarda ni los devuelve. La excepción es `customFields.orderReference`, que sí se guarda y se devuelve. Los descuentos por línea (`discountPercentage`, `discountAmount`) sí se aplican. Ver [Factura Devuelta por la API](#factura-devuelta-por-la-api).
+
 ### Tipos de Factura (invoiceType)
 
 **Facturas Ordinarias**:
@@ -933,7 +943,9 @@ curl -X POST "https://api.billivo.com/expenses/erp" \
 - `Credit Card`: Tarjeta de crédito
 - `PayPal`: PayPal
 - `Cash`: Efectivo
-- `Other`: Otro método
+- `Other`: Otro método. `Others` se acepta como sinónimo
+
+Cualquier otro valor devuelve `400`.
 
 ### Estados de Factura
 
@@ -1009,7 +1021,7 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 
 ### Formato de Error
 
-Todos los errores siguen el siguiente formato:
+La mayoría de los errores siguen el siguiente formato:
 
 ```json
 {
@@ -1017,17 +1029,19 @@ Todos los errores siguen el siguiente formato:
 }
 ```
 
+Excepciones: el `401` por token ausente o inválido devuelve `{ "message": "Unauthorized" }`, y el `400` de `POST /invoice/series` devuelve `error` como una lista.
+
 ### Errores Comunes
 
 #### Error 400 - Bad Request
 
 **Causa**: Datos de entrada inválidos o faltantes
 
-**Ejemplo**:
+**Ejemplo** (`POST /invoice` devuelve el mensaje en español y reúne todos los problemas en un solo texto):
 
 ```json
 {
-  "error": "Validation failed: Missing required field 'customer.mailAddress'"
+  "error": "No se encuentran los siguientes campos obligatorios o son inválidos: header.bankName | Errores en líneas: items[0].discountAmount ausente"
 }
 ```
 
@@ -1037,11 +1051,11 @@ Todos los errores siguen el siguiente formato:
 
 #### Error 401 - Unauthorized
 
-**Causa 1**: Token ausente o inválido
+**Causa 1**: Token ausente o inválido. El API Gateway rechaza la petición antes de que llegue a Billivo, y la respuesta no usa el formato `error`
 
 ```json
 {
-  "error": "Unauthorized - invalid or missing authentication"
+  "message": "Unauthorized"
 }
 ```
 
@@ -1058,6 +1072,16 @@ Todos los errores siguen el siguiente formato:
 ```
 
 **Solución**: Verificar las credenciales de usuario y contraseña.
+
+**Causa 3**: El usuario de `userEmail` o de `issuer.mailAddress` no pertenece a la empresa del token, la empresa no tiene acceso a la API, o el usuario es de tipo Agent o Guest. El campo `error` indica el motivo
+
+```json
+{
+  "error": "User cannot use the API."
+}
+```
+
+**Solución**: Usar el email de un usuario de Billivo de la misma empresa que el token, con acceso a la API.
 
 ---
 
@@ -1115,13 +1139,15 @@ Todos los errores siguen el siguiente formato:
 
 - `invoiceType`
 - `paymentTermName`
-- `paymentTermDays`
+- `paymentTermDays` (la API no lo devuelve en las respuestas)
 - `paymentType`
-- `dueDate`
-- `issuer` (con campos obligatorios: `name`, `nationalId`, `city`, `country`)
+- `dueDate` (no puede ser anterior a hoy, fecha de España, ni anterior a `invoiceDate`)
+- `customer` (excepto en facturas `F2` y `R5`)
+- `issuer` (con campos obligatorios: `name`, `nationalId`, `mailAddress`; `city` y `country` son opcionales)
 - `taxType`
 - `regimeKey`
-- `irpf`
+
+`issuer.mailAddress` debe ser el email de un usuario de Billivo de la misma empresa que el token: identifica la empresa que emite la factura. Si pertenece a otra empresa, la API responde `401`.
 
 ### Header (Opcionales)
 
@@ -1133,23 +1159,24 @@ Todos los errores siguen el siguiente formato:
 - `previousInvoiceNumber`
 - `correctedInvoiceNumber` (obligatorio para facturas rectificativas)
 - `correctiveType` (obligatorio para facturas rectificativas)
-- `bankName`
+- `bankName` (obligatorio si `paymentType` es `Bank Transfer`)
 - `SWIFT` (código SWIFT/BIC del banco, 8 u 11 caracteres)
 - `additionalNotes`
 - `currency` (por defecto: EUR)
-- `discount`
-- `pos`
-- `currencyExchange`
-- `customFields`
+- `irpf` (valores aceptados: `0`, `1`, `7`, `15`; por defecto `0`)
+- `discount` (la API lo acepta, pero no lo guarda ni lo devuelve)
+- `pos` (la API lo acepta, pero no lo guarda ni lo devuelve)
+- `currencyExchange` (la API lo acepta, pero no lo guarda ni lo devuelve)
+- `customFields` (la API solo guarda y devuelve `orderReference`)
 
 ### Customer (Obligatorios)
 
 - `customerName`
 - `nationalId`
-- `mailAddress`
 
 ### Customer (Opcionales)
 
+- `mailAddress` (necesario para `email=true`)
 - `vatId`
 - `addressStreet`
 - `addressNumber`
@@ -1161,27 +1188,38 @@ Todos los errores siguen el siguiente formato:
 ### Items (Obligatorios)
 
 - `name`
+- `type` (`Service` o `Article`)
 - `unitPrice`
 - `quantity`
 - `vatPercentage`
+- `discountPercentage`
+- `discountAmount`
+- `totalExcTax`
 
 ### Items (Opcionales)
 
 - `itemId`
 - `description`
-- `type` (Service o Article)
-- `discountPercentage`
-- `discountAmount`
-- `totalExcTax`
 - `equivalenceSurcharge` (tipo del recargo de equivalencia, 0-100)
 - `equivalenceSurchargeTax` (cuota del recargo; se envían los dos o ninguno)
 - `calificacionOperacion` (`S1` sujeta, `S2` inversión del sujeto pasivo, `N1`/`N2` no sujeta; por defecto `S1`)
 - `operacionExenta` (causa de exención de Veri*Factu, por ejemplo `E1`)
-- `customFields`
+- `customFields` (la API lo acepta, pero no lo guarda ni lo devuelve)
 
 ---
 
 ## Validaciones Importantes
+
+Al recibir la factura, la API comprueba:
+
+- Los campos obligatorios
+- Los valores permitidos de `invoiceType`, `paymentType`, `taxType`, `regimeKey`, `irpf`, `correctiveType` y `type` de cada línea
+- `vatPercentage` mayor o igual que 0
+- `equivalenceSurcharge` entre 0 y 100
+- `dueDate` no anterior a hoy (fecha de España) ni anterior a `invoiceDate`
+- Un máximo de 9999999999.99 para el precio unitario, la cantidad y el total de cada línea
+
+Los formatos y límites siguientes son los esperados. La API no los comprueba al recibir la factura, pero un valor fuera de rango puede hacer que el registro falle o que la AEAT rechace la factura.
 
 ### Formatos
 
@@ -1204,7 +1242,6 @@ Todos los errores siguen el siguiente formato:
 - `additionalNotes`: máximo 300 caracteres
 - `vatPercentage`: 0-100
 - `discountPercentage`: 0-100
-- `customFields`: máximo 10 propiedades, cada valor máximo 255 caracteres
 
 ---
 
@@ -1232,6 +1269,16 @@ El campo `base64pdf` contiene el PDF de la factura codificado en base64, listo p
 
 El campo `emailSent` es `true` si Billivo envió la factura al cliente (`email=true`). Un error en el email no hace fallar la petición: la factura ya está creada.
 
+### Factura Devuelta por la API
+
+La factura que devuelven `POST /invoice` (`invoice`), `GET /invoice` y `PATCH /invoice` (`body`) tiene menos campos que la petición:
+
+- **header**: `invoiceType`, `invoiceNumber`, `previousInvoiceNumber`, `correctedInvoiceNumber`, `correctiveType`, `bankName`, `SWIFT`, `paymentTermName`, `paymentType`, `paymentTypeDescription`, `dueDate`, `additionalNotes` (el texto `No additional notes` si no se envió ninguna), `currency`, `irpf`, `discount` (siempre `0`), `customer`, `issuer`, `taxType`, `regimeKey`, `operationDate`, `customFields.orderReference`
+- **header, no se devuelven**: `invoiceDate`, `formatId`, `paymentTermDays`, `pos`, `currencyExchange`
+- **items**: `itemId`, `name`, `type`, `description`, `unitPrice`, `quantity`, `vatPercentage`, `taxId`, `discountPercentage`, `discountAmount`, `totalExcTax`, `calificacionOperacion`, `operacionExenta`
+- **items, no se devuelven**: `equivalenceSurcharge`, `equivalenceSurchargeTax`, `customFields`
+- Además, cada factura incluye `status` y `base64pdf` en su nivel superior
+
 ---
 
 ## Mejores Prácticas
@@ -1240,7 +1287,7 @@ El campo `emailSent` es `true` si Billivo envió la factura al cliente (`email=t
 
 - Almacena el `access_token` de forma segura
 - Implementa lógica para renovar el token antes de que expire
-- Utiliza el `refresh_token` para obtener nuevos tokens sin re-autenticar
+- Para renovar, llama otra vez a `POST /token` con las mismas credenciales Basic. La API no tiene un endpoint para canjear el `refresh_token`
 
 ### 2. Manejo de Errores
 
@@ -1292,7 +1339,6 @@ La API está desplegada utilizando servicios administrados de AWS:
 - Enrutamiento automático de peticiones
 - Validación de tokens JWT integrada
 - CORS configurado para integraciones web
-- Límites de tasa (rate limiting) configurables
 - Logs de acceso y métricas en CloudWatch
 
 **AWS Lambda**:
@@ -1309,8 +1355,6 @@ La API está desplegada utilizando servicios administrados de AWS:
 
 - Gestión completa de usuarios
 - Políticas de contraseña configurables
-- MFA (Multi-Factor Authentication) disponible
-- Pool de usuarios segregado por cliente
 
 ### Seguridad
 
@@ -1319,7 +1363,6 @@ La API está desplegada utilizando servicios administrados de AWS:
 - OAuth2 con JWT tokens
 - Tokens firmados con algoritmo RS256
 - Validación automática en cada petición
-- Segregación de usuarios por cliente
 
 **Encriptación**:
 
@@ -1349,4 +1392,4 @@ Para dudas, problemas o sugerencias sobre la API, contacta con el equipo de Bill
 
 ---
 
-**Última actualización**: Septiembre 2026
+**Última actualización**: Octubre 2026

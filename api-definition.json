@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.2.2"
+    "version": "1.2.3"
   },
   "servers": [
     {
@@ -23,7 +23,7 @@
     "/token": {
       "post": {
         "summary": "Retrieve token",
-        "description": "Retrieves token in order to perform all the calls",
+        "description": "Returns the access token for all other calls. The response includes a refresh token, but the API has no endpoint to exchange it. To renew the access token, call `POST /token` again.",
         "security": [
           {
             "BasicAuth": []
@@ -40,8 +40,28 @@
               }
             }
           },
+          "400": {
+            "description": "The request is not valid, or the user must complete a challenge.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The user must reset the password.",
             "content": {
               "application/json": {
                 "schema": {
@@ -85,7 +105,7 @@
             }
           },
           "400": {
-            "description": "Bad request - validation errors",
+            "description": "A field is missing or not valid, or `dueDate` is before today. The `error` field is one string with all the problems. The messages are in Spanish.",
             "content": {
               "application/json": {
                 "schema": {
@@ -95,7 +115,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized - invalid or missing authentication",
+            "description": "Unauthorized. When the token is missing or not valid, the API gateway rejects the request. In that case the body is `{ \"message\": \"Unauthorized\" }`, not `ErrorResponse`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -245,7 +265,17 @@
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized. When the token is missing or not valid, the API gateway rejects the request. In that case the body is `{ \"message\": \"Unauthorized\" }`, not `ErrorResponse`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The user of `userEmail` is not registered",
             "content": {
               "application/json": {
                 "schema": {
@@ -1008,7 +1038,7 @@
       },
       "Issuer": {
         "type": "object",
-        "required": ["name", "nationalId", "city", "country"],
+        "required": ["name", "nationalId", "mailAddress"],
         "properties": {
           "name": {
             "type": "string",
@@ -1050,6 +1080,7 @@
             "type": "string",
             "format": "email",
             "maxLength": 120,
+            "description": "Email of a Billivo user of the same company as the token. It identifies the company that issues the invoice. A user of another company gives a 401.",
             "example": "billing@code10it.com"
           },
           "phoneNumber": {
@@ -1070,27 +1101,14 @@
           "dueDate",
           "issuer",
           "taxType",
-          "regimeKey",
-          "irpf"
+          "regimeKey"
         ],
         "properties": {
           "invoiceType": {
             "type": "string",
             "maxLength": 2,
             "minLength": 2,
-            "enum": [
-              "F1",
-              "F2",
-              "F3",
-              "F4",
-              "F5",
-              "F6",
-              "R1",
-              "R2",
-              "R3",
-              "R4",
-              "R5"
-            ],
+            "enum": ["F1", "F2", "R1", "R5"],
             "description": "FX for Invoices, RX for Corrective (Rectificativas)",
             "example": "F1"
           },
@@ -1126,11 +1144,20 @@
             "type": "integer",
             "format": "int32",
             "example": 30,
-            "default": 0
+            "default": 0,
+            "description": "Required. The API does not return it."
           },
           "paymentType": {
             "type": "string",
-            "enum": ["Bank Transfer", "Credit Card", "PayPal", "Cash", "Other"],
+            "enum": [
+              "Bank Transfer",
+              "Credit Card",
+              "PayPal",
+              "Cash",
+              "Other",
+              "Others"
+            ],
+            "description": "`Others` is a synonym of `Other`. Responses return `Other`.",
             "example": "Bank Transfer"
           },
           "paymentTypeDescription": {
@@ -1141,7 +1168,7 @@
           "bankName": {
             "type": "string",
             "maxLength": 120,
-            "description": "Name of the bank for bank transfer payments",
+            "description": "Name of the bank. Required when `paymentType` is `Bank Transfer`.",
             "example": "Santander"
           },
           "SWIFT": {
@@ -1154,13 +1181,13 @@
           },
           "invoiceDate": {
             "type": "string",
-            "format": "date-time",
-            "example": "2025-09-28T14:38:15.000Z"
+            "format": "date-time"
           },
           "dueDate": {
             "type": "string",
             "format": "date",
-            "example": "2025-09-28"
+            "description": "The date cannot be before today (date in Spain). The date cannot be before `invoiceDate`.",
+            "example": "2030-12-31"
           },
           "additionalNotes": {
             "type": "string",
@@ -1175,15 +1202,25 @@
           },
           "irpf": {
             "type": "number",
-            "minimum": 0,
+            "enum": [0, 1, 7, 15],
             "default": 0,
             "format": "decimal"
           },
           "discount": {
-            "$ref": "#/components/schemas/Discount"
+            "description": "The API accepts this field, but does not store it and does not return it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Discount"
+              }
+            ]
           },
           "customer": {
-            "$ref": "#/components/schemas/Customer"
+            "description": "Required, except for `F2` and `R5` invoices.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Customer"
+              }
+            ]
           },
           "issuer": {
             "$ref": "#/components/schemas/Issuer"
@@ -1206,14 +1243,24 @@
             "example": "2025-08-29"
           },
           "pos": {
-            "$ref": "#/components/schemas/POS"
+            "description": "The API accepts this field, but does not store it and does not return it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/POS"
+              }
+            ]
           },
           "currencyExchange": {
-            "$ref": "#/components/schemas/CurrencyExchange"
+            "description": "The API accepts this field, but does not store it and does not return it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CurrencyExchange"
+              }
+            ]
           },
           "customFields": {
             "type": "object",
-            "description": "Key-value pairs for custom data. Allows for flexible addition of custom fields.",
+            "description": "The API accepts this field, but does not store it and does not return it. The property `orderReference` is the exception: the API stores it and returns it. Key-value pairs for custom data.",
             "additionalProperties": {
               "type": "string",
               "maxLength": 255
@@ -1256,7 +1303,7 @@
       },
       "Customer": {
         "type": "object",
-        "required": ["customerName", "nationalId", "mailAddress"],
+        "required": ["customerName", "nationalId"],
         "properties": {
           "customerName": {
             "type": "string",
@@ -1304,13 +1351,23 @@
             "type": "string",
             "format": "email",
             "maxLength": 120,
+            "description": "Optional. It is necessary for `email=true`.",
             "example": "customer@acme.com"
           }
         }
       },
       "InvoiceItem": {
         "type": "object",
-        "required": ["name", "unitPrice", "quantity", "vatPercentage"],
+        "required": [
+          "name",
+          "type",
+          "unitPrice",
+          "quantity",
+          "vatPercentage",
+          "discountPercentage",
+          "discountAmount",
+          "totalExcTax"
+        ],
         "properties": {
           "itemId": {
             "type": "string",
@@ -1369,7 +1426,7 @@
           },
           "customFields": {
             "type": "object",
-            "description": "Key-value pairs for custom item data. Allows for flexible addition of custom fields.",
+            "description": "The API accepts this field, but does not store it and does not return it. Key-value pairs for custom item data.",
             "additionalProperties": {
               "type": "string",
               "maxLength": 255
@@ -1408,23 +1465,169 @@
           }
         }
       },
-      "InvoiceResponse": {
+      "InvoiceResponseHeader": {
         "type": "object",
-        "required": ["invoice", "message"],
+        "description": "Header of an invoice that the API returns. It does not include `invoiceDate`, `formatId`, `paymentTermDays`, `pos` and `currencyExchange`.",
         "properties": {
-          "invoice": {
-            "type": "object",
-            "$ref": "#/components/schemas/InvoiceHeader"
-          },
-          "message": {
+          "invoiceType": {
             "type": "string",
-            "example": "Invoice created successfully"
+            "enum": ["F1", "F2", "R1", "R5"],
+            "example": "F1"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "example": "INV-2025-001234"
+          },
+          "previousInvoiceNumber": {
+            "type": "string",
+            "example": "INV-2025-001199"
+          },
+          "correctedInvoiceNumber": {
+            "type": "string",
+            "example": "INV-2025-001200"
+          },
+          "correctiveType": {
+            "type": "string",
+            "enum": ["I", "S"],
+            "nullable": true
+          },
+          "bankName": {
+            "type": "string",
+            "example": "Santander"
+          },
+          "SWIFT": {
+            "type": "string",
+            "example": "BSCHESMMXXX"
+          },
+          "paymentTermName": {
+            "type": "string",
+            "example": "30 days"
+          },
+          "paymentType": {
+            "type": "string",
+            "enum": ["Bank Transfer", "Credit Card", "PayPal", "Cash", "Other"],
+            "example": "Bank Transfer"
+          },
+          "paymentTypeDescription": {
+            "type": "string",
+            "example": "ES0012345678901234567890"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2030-12-31"
+          },
+          "additionalNotes": {
+            "type": "string",
+            "description": "The text `No additional notes` when the request had no notes."
+          },
+          "currency": {
+            "type": "string",
+            "example": "EUR"
+          },
+          "irpf": {
+            "type": "number",
+            "format": "decimal",
+            "enum": [0, 1, 7, 15]
+          },
+          "discount": {
+            "type": "number",
+            "description": "Always 0.",
+            "example": 0
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "issuer": {
+            "$ref": "#/components/schemas/Issuer"
+          },
+          "taxType": {
+            "type": "string",
+            "enum": ["01", "02", "03", "05"]
+          },
+          "regimeKey": {
+            "type": "string",
+            "example": "01"
+          },
+          "operationDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "properties": {
+              "orderReference": {
+                "type": "string",
+                "example": "PO-2025-123"
+              }
+            }
+          }
+        }
+      },
+      "InvoiceResponseItem": {
+        "type": "object",
+        "description": "Line of an invoice that the API returns. It does not include `equivalenceSurcharge`, `equivalenceSurchargeTax` and `customFields`.",
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Professional Services"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["Service", "Article"],
+            "example": "Service"
+          },
+          "description": {
+            "type": "string"
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "decimal",
+            "example": 150.0
+          },
+          "quantity": {
+            "type": "number",
+            "format": "decimal",
+            "example": 2.5
+          },
+          "vatPercentage": {
+            "type": "number",
+            "format": "decimal",
+            "example": 21.0
+          },
+          "taxId": {
+            "nullable": true,
+            "description": "Identifier of the tax of the line in Billivo. It can be null."
+          },
+          "discountPercentage": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "totalExcTax": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "calificacionOperacion": {
+            "type": "string",
+            "enum": ["S1", "S2", "N1", "N2"]
+          },
+          "operacionExenta": {
+            "type": "string",
+            "example": "E1"
           }
         }
       },
       "POS": {
         "type": "object",
-        "description": "Point of Sale (POS) information",
+        "description": "The API accepts this object, but does not store it and does not return it. Point of Sale (POS) information.",
         "properties": {
           "storeId": {
             "type": "string",
@@ -1451,7 +1654,7 @@
       },
       "CurrencyExchange": {
         "type": "object",
-        "description": "Currency conversion details",
+        "description": "The API accepts this object, but does not store it and does not return it. Currency conversion details.",
         "properties": {
           "currency": {
             "type": "string",
@@ -1514,7 +1717,7 @@
           },
           "refresh_token": {
             "type": "string",
-            "description": "A token used to obtain a new access token after the current one expires.",
+            "description": "The API returns a refresh token, but has no endpoint to exchange it. To renew the access token, call `POST /token` again.",
             "example": "rt_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
           }
         },
@@ -1557,12 +1760,12 @@
         "required": ["header", "items", "status"],
         "properties": {
           "header": {
-            "$ref": "#/components/schemas/InvoiceHeader"
+            "$ref": "#/components/schemas/InvoiceResponseHeader"
           },
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/InvoiceItem"
+              "$ref": "#/components/schemas/InvoiceResponseItem"
             }
           },
           "status": {

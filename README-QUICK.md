@@ -42,7 +42,7 @@ Authorization: Basic {base64(username:password)}
 Authorization: Bearer {access_token}
 ```
 
-El token expira en 1 hora. Usa el `refresh_token` para renovarlo.
+El token expira en 1 hora. Para renovarlo, llama de nuevo a `POST /token` con las mismas credenciales. La API devuelve un `refresh_token`, pero no tiene un endpoint para canjearlo.
 
 ---
 
@@ -149,7 +149,8 @@ curl -X POST https://api.billivo.com/invoice \
       "paymentTermDays": 30,
       "paymentType": "Bank Transfer",
       "paymentTypeDescription": "ES1234567890123456789012",
-      "dueDate": "2025-12-28",
+      "bankName": "Santander",
+      "dueDate": "2030-12-31",
       "currency": "EUR",
       "irpf": 0,
       "taxType": "01",
@@ -170,9 +171,13 @@ curl -X POST https://api.billivo.com/invoice \
     "items": [
       {
         "name": "Servicios Profesionales",
+        "type": "Service",
         "unitPrice": 100,
         "quantity": 5,
-        "vatPercentage": 21
+        "vatPercentage": 21,
+        "discountPercentage": 0,
+        "discountAmount": 0,
+        "totalExcTax": 500
       }
     ]
   }'
@@ -197,25 +202,27 @@ curl -X POST https://api.billivo.com/invoice \
 
 `invoice.status` es `sent` o `validated_with_errors`. Para consultar el estado más adelante sin reenviar la factura, usa `GET /invoice?userEmail={email}&invoiceNumber={numero}` y lee `body[0].status`.
 
+La factura devuelta no incluye `invoiceDate`, `formatId` ni `paymentTermDays` (lista completa en README.md).
+
 ---
 
 ## Campos Esenciales
 
 ### Header (Obligatorios)
 
-- `invoiceType`: "F1" (factura normal) o "R1" (rectificativa)
+- `invoiceType`: `F1`, `F2`, `R1` o `R5` (ver Tipos de Factura)
 - `paymentTermName`: Nombre del plazo de pago
 - `paymentTermDays`: Días del plazo de pago
-- `paymentType`: Método de pago
-- `dueDate`: Fecha de vencimiento (YYYY-MM-DD)
+- `paymentType`: Método de pago: `Bank Transfer`, `Credit Card`, `PayPal`, `Cash` u `Other`
+- `bankName`: Nombre del banco. Obligatorio solo si `paymentType` es `Bank Transfer`
+- `dueDate`: Fecha de vencimiento (YYYY-MM-DD). No puede ser anterior a hoy ni a `invoiceDate`
 - `taxType`: "01"
 - `regimeKey`: "01"
-- `irpf`: Porcentaje de retención (0-100)
 
 ### Header (Opcionales)
 
 - `paymentTypeDescription`: Descripción/número de cuenta (IBAN para transferencias)
-- `bankName`: Nombre del banco (para transferencias bancarias)
+- `irpf`: Porcentaje de retención. Solo `0`, `1`, `7` o `15` (por defecto `0`)
 - `SWIFT`: Código SWIFT/BIC del banco (8 u 11 caracteres)
 - `formatId`: Serie de numeración (solo modo NO_ERP)
 
@@ -223,22 +230,27 @@ curl -X POST https://api.billivo.com/invoice \
 
 - `customerName`: Nombre del cliente
 - `nationalId`: NIF/CIF del cliente
-- `mailAddress`: Email del cliente
+
+Opcional: `mailAddress` (email del cliente), necesario para `email=true`. El cliente no es obligatorio en `F2` y `R5`.
 
 ### Issuer (Obligatorios)
 
 - `name`: Nombre de tu empresa
 - `nationalId`: NIF/CIF de tu empresa
-- `city`: Ciudad
-- `country`: Código país (ej: "ES")
-- `mailAddress`: Email de tu empresa
+- `mailAddress`: Email de un usuario de Billivo de la misma empresa que el token
+
+Opcionales: `city` (ciudad) y `country` (código de país, ej: "ES").
 
 ### Items (Obligatorios)
 
 - `name`: Nombre del producto/servicio
+- `type`: `Service` o `Article`
 - `unitPrice`: Precio unitario
 - `quantity`: Cantidad
 - `vatPercentage`: % de IVA
+- `discountPercentage`: % de descuento (`0` si no hay)
+- `discountAmount`: Importe del descuento (`0` si no hay)
+- `totalExcTax`: Total de la línea sin impuestos
 
 ### Items (Opcionales)
 
@@ -283,20 +295,20 @@ Para facturas rectificativas, añade:
 
 ## Errores Comunes
 
-| Código | Causa                       | Solución                                    |
-| ------ | --------------------------- | ------------------------------------------- |
-| 400    | Datos inválidos o faltantes | Verifica campos obligatorios                |
-| 401    | Token inválido o expirado   | Obtén un nuevo token                        |
-| 403    | Sin acceso a Billivo Gastos | Solicita el acceso a Billivo                |
-| 404    | Factura no encontrada       | Verifica número de factura y userEmail      |
-| 409    | Serie con el mismo formato  | Cambia el prefijo, el año o los separadores |
-| 500    | Error del servidor          | Contacta con soporte                        |
+| Código | Causa                                                   | Solución                                    |
+| ------ | ------------------------------------------------------- | ------------------------------------------- |
+| 400    | Datos inválidos o faltantes, o `dueDate` anterior a hoy | Verifica campos obligatorios y fechas       |
+| 401    | Token inválido o expirado                               | Obtén un nuevo token                        |
+| 403    | Sin acceso a Billivo Gastos                             | Solicita el acceso a Billivo                |
+| 404    | Factura no encontrada                                   | Verifica número de factura y userEmail      |
+| 409    | Serie con el mismo formato                              | Cambia el prefijo, el año o los separadores |
+| 500    | Error del servidor                                      | Contacta con soporte                        |
 
 ---
 
 ## Mejores Prácticas
 
-1. **Tokens**: Guarda el token de forma segura y renuévalo antes de que expire
+1. **Tokens**: Guarda el token de forma segura. Antes de que expire, pide otro con `POST /token` (no hay endpoint de `refresh_token`)
 2. **Validación**: Verifica todos los campos obligatorios antes de enviar
 3. **Paginación**: Usa `page` y `limit` al consultar muchas facturas (máx: 100/página)
 4. **Numeración**: En modo NO_ERP, no envíes `invoiceNumber`. Guarda el número que devuelve la API
@@ -315,4 +327,4 @@ Para facturas rectificativas, añade:
 
 ---
 
-**Última actualización**: Septiembre 2026
+**Última actualización**: Octubre 2026
