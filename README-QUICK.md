@@ -83,7 +83,7 @@ GET /invoice?userEmail={email}&invoiceNumber={numero}&page={pagina}&limit={limit
 Authorization: Bearer {token}
 ```
 
-`pdf=true` incluye el PDF de cada factura en `base64pdf`.
+`pdf=true` incluye el PDF de cada factura en `base64pdf`. Cada factura incluye su estado en `status`.
 
 ### Actualizar Estado
 
@@ -185,12 +185,15 @@ curl -X POST https://api.billivo.com/invoice \
       "invoiceNumber": "2025-0000000028",
       ...
     },
-    "items": [...]
+    "items": [...],
+    "status": "sent"
   },
   "base64pdf": "data:application/pdf;filename=generated.pdf;base64,JVBERi0x...",
   "emailSent": false
 }
 ```
+
+`invoice.status` es `sent` o `validated_with_errors`. Para consultar el estado más adelante sin reenviar la factura, usa `GET /invoice?userEmail={email}&invoiceNumber={numero}` y lee `body[0].status`.
 
 ---
 
@@ -263,11 +266,16 @@ Para facturas rectificativas, añade:
 ## Estados de Factura
 
 - `draft`: Borrador
-- `sent`: Enviada
-- `validated`: Validada
+- `proforma`: Proforma
+- `validating`: En proceso de validación
+- `sent`: Registrada en la AEAT
+- `validated_with_errors`: Aceptada por la AEAT con errores
 - `paid`: Pagada
 - `overdue`: Vencida
-- `cancelled`: Cancelada
+- `cancelled`: Anulada
+- `rectified`: Rectificada por una factura rectificativa
+- `rectifying`: En proceso de rectificación
+- `error`: Rechazada por la AEAT
 
 ---
 

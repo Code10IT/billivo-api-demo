@@ -257,7 +257,7 @@ Obtiene todas las facturas de un usuario o una factura específica.
 | `invoiceNumber` | string  | No        | Número de factura específica a consultar                                                                           |
 | `page`          | integer | No        | Número de página (por defecto: 1)                                                                                  |
 | `limit`         | integer | No        | Elementos por página (por defecto: 20, máximo: 100)                                                                |
-| `status`        | string  | No        | Filtrar por estado: `draft`, `sent`, `paid`, `overdue`, `validated`, `validated_with_errors`, `cancelled`          |
+| `status`        | string  | No        | Filtrar por estado. Ver [Estados de Factura](#estados-de-factura). Un valor no reconocido devuelve `400`           |
 | `pdf`           | boolean | No        | Con `true`, cada factura incluye su PDF en `base64pdf` (base64 sin prefijo `data:`). Sin él, `base64pdf` es `null` |
 
 **Ejemplo de Respuesta (200)**:
@@ -276,7 +276,8 @@ Obtiene todas las facturas de un usuario o una factura específica.
         "issuer": { ... }
       },
       "items": [ ... ],
-      "base64pdf": null
+      "base64pdf": null,
+      "status": "sent"
     }
   ],
   "message": "GET successful",
@@ -288,6 +289,8 @@ Obtiene todas las facturas de un usuario o una factura específica.
   }
 }
 ```
+
+Cada factura incluye su estado actual en `status`. Si ninguna factura coincide con los filtros, `body` es una lista vacía.
 
 ---
 
@@ -711,7 +714,7 @@ curl -X POST https://api.billivo.com/invoice \
 curl -X GET "https://api.billivo.com/invoice?userEmail=usuario@empresa.com" \
   -H "Authorization: Bearer {tu_token}"
 
-# Obtener una factura específica
+# Obtener una factura específica (su estado actual está en body[0].status)
 curl -X GET "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&invoiceNumber=2025-0000000027" \
   -H "Authorization: Bearer {tu_token}"
 
@@ -921,13 +924,23 @@ curl -X POST "https://api.billivo.com/expenses/erp" \
 
 ### Estados de Factura
 
+El campo `status` de una factura y el filtro `status` de `GET /invoice` usan estos valores:
+
 - `draft`: Borrador
-- `sent`: Enviada
-- `validated`: Validada
+- `proforma`: Proforma
+- `validating`: En proceso de validación
+- `sent`: Registrada en la AEAT
+- `validated_with_errors`: Aceptada por la AEAT con errores
 - `paid`: Pagada
 - `overdue`: Vencida
-- `validated_with_errors`: Validada con errores
-- `cancelled`: Cancelada
+- `cancelled`: Anulada
+- `rectified`: Rectificada por una factura rectificativa
+- `rectifying`: En proceso de rectificación
+- `error`: Rechazada por la AEAT
+
+Una factura creada con `POST /invoice` queda en `sent` o en `validated_with_errors`.
+
+El filtro `status=overdue` se calcula con la fecha de vencimiento: devuelve las facturas sin pagar cuyo `dueDate` ya pasó. El campo `status` de esas facturas puede seguir en `sent`.
 
 ### Tipos de Impuesto (taxType)
 
@@ -1187,12 +1200,17 @@ Cuando se crea una factura exitosamente, la API devuelve:
 {
   "invoice": {
     "header": { ... },
-    "items": [ ... ]
+    "items": [ ... ],
+    "status": "sent"
   },
   "base64pdf": "data:application/pdf;filename=generated.pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9...",
   "emailSent": false
 }
 ```
+
+El campo `invoice.status` contiene el estado de la factura: `sent` si la AEAT la registró, o `validated_with_errors` si la aceptó con errores. Ver [Estados de Factura](#estados-de-factura).
+
+Para conocer más adelante el estado de una factura ya enviada, usa `GET /invoice?userEmail={email}&invoiceNumber={numero}`. Es una consulta de solo lectura: no reenvía la factura ni crea duplicados.
 
 El campo `base64pdf` contiene el PDF de la factura codificado en base64, listo para ser guardado o enviado al cliente. Billivo también guarda el PDF, así que `GET /invoice?pdf=true` lo devuelve después.
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.2.0"
+    "version": "1.2.1"
   },
   "servers": [
     {
@@ -193,18 +193,22 @@
           {
             "name": "status",
             "in": "query",
-            "description": "Filter by invoice status",
+            "description": "Filter by invoice status. An unknown value returns 400. `overdue` is computed from the due date: it returns unpaid invoices whose `dueDate` has passed, and their `status` field can still be `sent`.",
             "required": false,
             "schema": {
               "type": "string",
               "enum": [
                 "draft",
+                "proforma",
+                "validating",
                 "sent",
+                "validated_with_errors",
                 "paid",
                 "overdue",
-                "validated",
-                "validated_with_errors",
-                "cancelled"
+                "cancelled",
+                "rectified",
+                "rectifying",
+                "error"
               ]
             }
           },
@@ -1546,14 +1550,18 @@
             "type": "string",
             "enum": [
               "draft",
+              "proforma",
+              "validating",
               "sent",
-              "validated",
+              "validated_with_errors",
               "paid",
               "overdue",
-              "validated_with_errors",
-              "cancelled"
+              "cancelled",
+              "rectified",
+              "rectifying",
+              "error"
             ],
-            "description": "Current status of the invoice. 'validated' indicates the invoice has been validated and is ready to be sent.",
+            "description": "Current status of the invoice. `sent`: registered at the AEAT. `validated_with_errors`: accepted by the AEAT with errors. `error`: rejected by the AEAT. `cancelled`: annulled. `rectified`: corrected by a corrective invoice. An invoice created with `POST /invoice` is `sent` or `validated_with_errors`.",
             "example": "sent"
           },
           "base64pdf": {
@@ -1565,7 +1573,7 @@
       },
       "InvoiceValidationResponse": {
         "type": "object",
-        "required": ["invoice", "status"],
+        "required": ["invoice"],
         "properties": {
           "invoice": {
             "$ref": "#/components/schemas/Invoice"
