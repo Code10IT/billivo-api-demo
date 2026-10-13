@@ -300,7 +300,7 @@ Cada factura incluye su estado actual en `status`. Si ninguna factura coincide c
 PATCH /invoice?userEmail={email}&invoiceNumber={numero}
 ```
 
-Actualiza el estado de una factura existente.
+Marca una factura como pagada, o deshace el pago. Solo se aplica a facturas en estado `sent` o `paid`.
 
 **Parámetros Query**:
 
@@ -311,23 +311,36 @@ Actualiza el estado de una factura existente.
 
 ```json
 {
-  "status": "sent"
+  "status": "paid"
 }
 ```
 
 **Estados válidos**:
 
-- `sent`: Factura enviada
-- `validated`: Factura validada
-- `paid`: Factura pagada
-- `cancelled`: Factura cancelada
+- `paid`: Marca la factura como pagada
+- `sent`: Deshace el pago. La factura vuelve a `sent`
+
+**Ejemplo de Respuesta (200)**:
+
+```json
+{
+  "body": {
+    "header": { ... },
+    "items": [ ... ],
+    "status": "paid"
+  },
+  "message": "Invoice status updated successfully",
+  "status": "paid"
+}
+```
 
 **Respuestas**:
 
 - `200 OK`: Estado actualizado correctamente
-- `400 Bad Request`: Petición inválida
+- `400 Bad Request`: Estado no aceptado o falta `invoiceNumber`
 - `401 Unauthorized`: No autorizado
 - `404 Not Found`: Factura no encontrada
+- `409 Conflict`: La factura no está en `sent` ni en `paid`. El campo `error` indica su estado actual
 - `500 Internal Server Error`: Error del servidor
 
 ---
@@ -729,14 +742,14 @@ curl -X GET "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&statu
 
 ---
 
-### Ejemplo 5: Actualizar Estado de Factura
+### Ejemplo 5: Marcar una Factura como Pagada
 
 ```bash
 curl -X PATCH "https://api.billivo.com/invoice?userEmail=usuario@empresa.com&invoiceNumber=2025-0000000027" \
   -H "Authorization: Bearer {tu_token}" \
   -H "Content-Type: application/json" \
   -d '{
-    "status": "validated"
+    "status": "paid"
   }'
 ```
 

@@ -93,9 +93,11 @@ Authorization: Bearer {token}
 Content-Type: application/json
 
 {
-  "status": "sent"
+  "status": "paid"
 }
 ```
+
+`paid` marca la factura como pagada y `sent` deshace el pago. Solo para facturas en `sent` o `paid`: en otro estado devuelve `409`.
 
 ### Series de Numeración
 

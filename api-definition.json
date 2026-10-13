@@ -269,7 +269,7 @@
       },
       "patch": {
         "summary": "Update invoice status",
-        "description": "Updates the status of an invoice. Typically used to mark an invoice as validated or sent.",
+        "description": "Marks an invoice as paid, or undoes the payment. It only applies to an invoice whose status is `sent` or `paid`.",
         "security": [
           {
             "BearerAuth": []
@@ -339,6 +339,16 @@
           },
           "404": {
             "description": "Invoice not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The invoice status is not `sent` or `paid`. The `error` field shows the current status.",
             "content": {
               "application/json": {
                 "schema": {
@@ -957,17 +967,26 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["sent", "validated", "paid", "cancelled"],
-            "description": "New status for the invoice"
+            "enum": ["paid", "sent"],
+            "description": "`paid` marks the invoice as paid. `sent` undoes the payment."
           }
         }
       },
       "UpdateInvoiceStatusResponse": {
         "type": "object",
-        "required": ["body"],
+        "required": ["body", "status"],
         "properties": {
           "body": {
             "$ref": "#/components/schemas/Invoice"
+          },
+          "message": {
+            "type": "string",
+            "example": "Invoice status updated successfully"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["paid", "sent"],
+            "description": "New status of the invoice. Same value as `body.status`."
           }
         }
       },
