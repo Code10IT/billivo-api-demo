@@ -127,12 +127,18 @@ GET /expenses/export?from=2026-01-01&to=2026-03-31&format=json&page=1&limit=100
 GET /expenses/erp?after={ultimoExpenseId}&limit=100
 POST /expenses/erp        { "confirmed": [ { "expenseId": "...", "erpId": "FAC-88" } ] }
 GET /expenses/categories
+PATCH /expenses/payment  { "expenseId": "...", "paidAt": "2026-10-17T00:00:00Z" }
+PATCH /expenses/payments { "payments": [ { "expenseId": "...", "paidAt": null } ] }
 Authorization: Bearer {token}
 ```
 
 - La empresa necesita acceso a Billivo Gastos (si no, `403`)
 - Sin `format=json`, `/expenses/export` devuelve un enlace a un ZIP con el Excel
 - `/expenses/erp` devuelve los gastos que el ERP aún no registró. Tras el `POST`, el gasto ya no se puede editar en Billivo Gastos
+- `paidAt` indica el pago: fecha ISO 8601 con hora y zona horaria = pagado; `null` = pendiente. Se incluye en los gastos JSON. No hay un nuevo campo booleano
+- Los dos `PATCH` exigen `expenseId` (UUID) y `paidAt` (fecha o `null`). Permiten actualizar el pago de gastos confirmados aunque estén cerrados o registrados en el ERP
+- El lote admite 1–500 IDs distintos. Devuelve `{ "updated": [{ "expenseId": "...", "paidAt": "..." }], "rejected": ["..."] }`; revisa `rejected` aunque el estado sea `200`
+- Un dato inválido devuelve `400` sin cambios. El individual devuelve `404` si el gasto no está disponible; el lote enumera esos IDs en `rejected`. Solo se modifican gastos de la empresa del token
 
 ---
 

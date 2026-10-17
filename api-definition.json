@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Billivo API",
-    "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.2.3"
+    "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration, and update expense payment dates.",
+    "version": "1.2.4"
   },
   "servers": [
     {
@@ -889,6 +889,202 @@
           },
           "502": {
             "description": "The Billivo Gastos request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses/payment": {
+      "patch": {
+        "tags": [
+          "Expenses"
+        ],
+        "operationId": "updateExpensePayment",
+        "summary": "Update an expense payment date",
+        "description": "Uses the existing paidAt field: a timestamp means paid; null means unpaid. Requires API and Billivo Gastos access. Only confirmed, non-deleted expenses of the token company are eligible. Payment bookkeeping may be updated after closing or ERP synchronization; fiscal data and hashes are unchanged. paidAt is required, must include a timezone, and accepts up to three fractional-second digits. Responses use UTC. Repeating the same timestamp or null is safe. Returns 404 for missing, deleted, unconfirmed or other-company expenses, without revealing which condition applies.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpensePaymentUpdate"
+              },
+              "examples": {
+                "markPaid": {
+                  "summary": "Mark paid on the specified date",
+                  "value": {
+                    "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+                    "paidAt": "2026-10-17T00:00:00Z"
+                  }
+                },
+                "markUnpaid": {
+                  "summary": "Clear the payment",
+                  "value": {
+                    "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+                    "paidAt": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved payment state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensePaymentUpdate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, UUID, missing paidAt, invalid timestamp, duplicate UUID (case insensitive), or invalid batch size. No payment updates are written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid/missing token or API access not enabled. API Gateway may return {\"message\":\"Unauthorized\"}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The company does not have Billivo Gastos access.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Expense not found or not eligible in this company.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. The update statement is rolled back on database failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses/payments": {
+      "patch": {
+        "tags": [
+          "Expenses"
+        ],
+        "operationId": "updateExpensePayments",
+        "summary": "Update payment dates in a batch",
+        "description": "Uses the existing paidAt field: a timestamp means paid; null means unpaid. Requires API and Billivo Gastos access. Only confirmed, non-deleted expenses of the token company are eligible. Payment bookkeeping may be updated after closing or ERP synchronization; fiscal data and hashes are unchanged. paidAt is required, must include a timezone, and accepts up to three fractional-second digits. Responses use UTC. Repeating the same timestamp or null is safe. Accepts 1–500 distinct UUIDs, with individual timestamps or nulls. All items are validated before writing. Matching expenses are updated in one statement; unmatched IDs are reported in rejected without revealing their company or status. Updated and rejected results follow request order. A 200 response may contain rejected IDs: inspect both arrays.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpensePaymentBatchRequest"
+              },
+              "examples": {
+                "mixed": {
+                  "value": {
+                    "payments": [
+                      {
+                        "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+                        "paidAt": "2026-10-17T00:00:00Z"
+                      },
+                      {
+                        "expenseId": "bf14e45f-ceea-4a7a-9c1d-0b5e2a1f3c88",
+                        "paidAt": null
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated payments and unmatched IDs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensePaymentBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, UUID, missing paidAt, invalid timestamp, duplicate UUID (case insensitive), or invalid batch size. No payment updates are written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid/missing token or API access not enabled. API Gateway may return {\"message\":\"Unauthorized\"}.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The company does not have Billivo Gastos access.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. The update statement is rolled back on database failure.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1996,9 +2192,70 @@
           }
         }
       },
+      "ExpensePaymentUpdate": {
+        "type": "object",
+        "required": [
+          "expenseId",
+          "paidAt"
+        ],
+        "properties": {
+          "expenseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,3})?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$",
+            "description": "Existing payment timestamp. Send null to mark unpaid; send an ISO 8601 timestamp with seconds and a timezone to mark paid. Date-only strings and impossible calendar dates are rejected. There is no implicit current-date default.",
+            "example": "2026-10-17T00:00:00Z"
+          }
+        }
+      },
+      "ExpensePaymentBatchRequest": {
+        "type": "object",
+        "required": [
+          "payments"
+        ],
+        "properties": {
+          "payments": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 500,
+            "description": "Each expenseId must be unique, ignoring case.",
+            "items": {
+              "$ref": "#/components/schemas/ExpensePaymentUpdate"
+            }
+          }
+        }
+      },
+      "ExpensePaymentBatchResponse": {
+        "type": "object",
+        "required": [
+          "updated",
+          "rejected"
+        ],
+        "properties": {
+          "updated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpensePaymentUpdate"
+            }
+          },
+          "rejected": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Missing, deleted, unconfirmed or other-company expenses. No reason is disclosed."
+          }
+        }
+      },
       "Expense": {
         "type": "object",
-        "description": "A confirmed expense. Amounts are numbers, dates are YYYY-MM-DD.",
+        "description": "A confirmed expense. Amounts are numbers; expense dates are YYYY-MM-DD; paidAt is an ISO 8601 timestamp or null.",
         "properties": {
           "expenseId": {
             "type": "string",
@@ -2101,6 +2358,13 @@
           },
           "paymentMethodName": {
             "type": "string"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Payment timestamp. null means unpaid. Updated through PATCH /expenses/payment or PATCH /expenses/payments; independent of ERP synchronization and closing.",
+            "example": "2026-10-17T00:00:00.000Z"
           },
           "documentType": {
             "type": "string",

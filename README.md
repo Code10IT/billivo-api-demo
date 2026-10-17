@@ -541,6 +541,69 @@ Un `categoryId` nunca cambia y una categoría no se elimina, solo se desactiva (
 
 ---
 
+### 10. Billivo Gastos: Fecha y Estado de Pago
+
+El campo existente `paidAt` indica el estado de pago: una fecha significa **pagado** y `null` significa **pendiente de pago**. Se incluye en los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp`.
+
+```http
+PATCH /expenses/payment
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+  "paidAt": "2026-10-17T00:00:00Z"
+}
+```
+
+**Respuesta (200)**:
+
+```json
+{
+  "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+  "paidAt": "2026-10-17T00:00:00.000Z"
+}
+```
+
+Para deshacer el pago, envía el mismo `expenseId` con `"paidAt": null`. `paidAt` es obligatorio: no se sustituye por la fecha actual. Una fecha debe incluir hora, segundos y zona horaria (`Z` o `±HH:MM`), con hasta tres decimales de segundo. Por ejemplo, `2026-10-17T12:00:00+02:00` se devuelve como `2026-10-17T10:00:00.000Z`. No se admiten fechas sin hora (`2026-10-17`) ni días inexistentes.
+
+### 11. Billivo Gastos: Actualización Masiva de Pagos
+
+```http
+PATCH /expenses/payments
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "payments": [
+    { "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77", "paidAt": "2026-10-17T00:00:00Z" },
+    { "expenseId": "bf14e45f-ceea-4a7a-9c1d-0b5e2a1f3c88", "paidAt": null }
+  ]
+}
+```
+
+**Respuesta (200)**:
+
+```json
+{
+  "updated": [
+    { "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77", "paidAt": "2026-10-17T00:00:00.000Z" },
+    { "expenseId": "bf14e45f-ceea-4a7a-9c1d-0b5e2a1f3c88", "paidAt": null }
+  ],
+  "rejected": []
+}
+```
+
+- De 1 a 500 elementos, cada uno con un UUID `expenseId` distinto y su `paidAt`. Se pueden combinar pagos y anulaciones
+- Ambos endpoints actúan únicamente sobre gastos confirmados, no eliminados y de la empresa del token. Requieren acceso a la API y a Billivo Gastos; el body no permite elegir otra empresa
+- La fecha de pago se puede modificar aunque el gasto esté cerrado o registrado en el ERP. Solo se actualizan `paidAt` y, si cambia, `updatedAt`
+- Un `400` por JSON, UUID, fecha, tamaño de lote o duplicados no escribe ningún pago. Los UUID se comparan sin distinguir mayúsculas y minúsculas
+- En el lote, los gastos elegibles se actualizan en una sola sentencia. Los IDs no encontrados, de otra empresa, eliminados o sin confirmar se devuelven en `rejected`, sin indicar el motivo. Hay que revisar este array incluso con respuesta `200`
+- El endpoint individual devuelve `404` para esos mismos casos. `401` indica un token inválido o falta de acceso a la API; `403`, falta de acceso a Billivo Gastos; `500`, un error interno
+- `updated` y `rejected` siguen el orden de la petición. Repetir el mismo valor es seguro y conserva `updatedAt` si no cambia el pago
+
+---
+
 ## Ejemplos de Uso
 
 ### Ejemplo 1: Crear Factura en Modo NO_ERP (Numeración Automática)
@@ -998,6 +1061,7 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
   "categoryName": "Transporte",
   "paymentMethodId": "2",
   "paymentMethodName": "Tarjeta",
+  "paidAt": "2026-10-17T00:00:00.000Z",
   "documentTypeName": "Factura",
   "erpId": null,
   "vatLines": [{ "vatPercent": 21, "taxBase": 100, "vatAmount": 21 }],
@@ -1013,6 +1077,7 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 - `irpfPercent` e `irpfAmount`: tipo (%) y cuota de la retención de IRPF, calculada sobre `taxBase`. Sin retención, los dos valen `0`. `totalAmount` es base más IVA, así que el importe a pagar es `totalAmount - irpfAmount`
 - `receipt.url`: enlace al ticket o factura escaneada. Caduca a los 5 minutos
 - `erpId`: el id que el ERP envió en `POST /expenses/erp`
+- `paidAt`: fecha de pago ISO 8601 o `null` si está pendiente. Se actualiza con `PATCH /expenses/payment` o `PATCH /expenses/payments`
 - La respuesta incluye además otros campos del gasto (dirección del emisor y del receptor, descuento, país, fechas de alta y modificación)
 
 ---
