@@ -2,6 +2,11 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.3.2 (2026-10-19)
+
+### Added
+- `dueDate`, `iban`, `bic` and `bankName` fields on expenses (payment due date and merchant bank account for a transfer).
+
 ## 1.3.1 (2026-10-19)
 
 ### Added

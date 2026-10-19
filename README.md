@@ -1105,6 +1105,10 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
   "categoryName": "Transporte",
   "paymentMethodId": "2",
   "paymentMethodName": "Tarjeta",
+  "dueDate": null,
+  "iban": null,
+  "bic": null,
+  "bankName": null,
   "documentTypeName": "Factura",
   "erpId": null,
   "vatLines": [{ "vatPercent": 21, "taxBase": 100, "vatAmount": 21 }],
@@ -1118,6 +1122,8 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 
 - `vatLines`: desglose de IVA, una línea por tipo
 - `irpfPercent` e `irpfAmount`: tipo (%) y cuota de la retención de IRPF, calculada sobre `taxBase`. Sin retención, los dos valen `0`. `totalAmount` es base más IVA, así que el importe a pagar es `totalAmount - irpfAmount`
+- `dueDate`: fecha de vencimiento del pago, o `null` si la factura no la indica
+- `iban`, `bic` y `bankName`: cuenta del emisor para pagar por transferencia (IBAN sin espacios, SWIFT/BIC y nombre del banco). Valen `null` si el gasto no se paga por transferencia
 - `receipt.url`: enlace al ticket o factura escaneada. Caduca a los 5 minutos
 - `erpId`: el id que el ERP envió en `POST /expenses/erp`
 - La respuesta incluye además otros campos del gasto (dirección del emisor y del receptor, descuento, país, fechas de alta y modificación)
