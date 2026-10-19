@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.3.0"
+    "version": "1.3.1"
   },
   "servers": [
     {
@@ -1189,6 +1189,10 @@
                           "active": {
                             "type": "boolean",
                             "description": "A payment method is deactivated, never deleted."
+                          },
+                          "markAsPaid": {
+                            "type": "boolean",
+                            "description": "If true, an expense that gets this payment method is marked as paid (it gets a paidAt)."
                           }
                         }
                       }

@@ -2,6 +2,11 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.3.1 (2026-10-19)
+
+### Added
+- `markAsPaid` field on `GET /expenses/paymentMethods`: an expense that gets this payment method is marked as paid.
+
 ## 1.3.0 (2026-10-19)
 
 ### Added

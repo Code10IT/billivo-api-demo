@@ -550,11 +550,13 @@ GET /expenses/paymentMethods
 ```json
 {
   "paymentMethods": [
-    { "paymentMethodId": "2", "paymentMethodName": "Tarjeta de crédito", "active": true },
-    { "paymentMethodId": "4", "paymentMethodName": "Efectivo", "active": true }
+    { "paymentMethodId": "2", "paymentMethodName": "Tarjeta de crédito", "active": true, "markAsPaid": true },
+    { "paymentMethodId": "4", "paymentMethodName": "Efectivo", "active": true, "markAsPaid": false }
   ]
 }
 ```
+
+Si `markAsPaid` es `true`, un gasto que recibe ese método de pago queda marcado como pagado (tiene `paidAt`).
 
 Funciona igual que las categorías: un `paymentMethodId` nunca cambia y un método de pago no se elimina, solo se desactiva (`active: false`). El ERP puede asociar cada `paymentMethodId` a su propia forma de pago. Es el valor de `paymentMethodId` en cada gasto.
 
