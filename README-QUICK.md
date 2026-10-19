@@ -127,6 +127,7 @@ GET /expenses/export?from=2026-01-01&to=2026-03-31&format=json&page=1&limit=100
 GET /expenses/erp?after={ultimoExpenseId}&limit=100
 POST /expenses/erp        { "confirmed": [ { "expenseId": "...", "erpId": "FAC-88" } ] }
 GET /expenses/categories
+GET /expenses/paymentMethods
 PATCH /expenses/status   { "expenseId": "...", "paid": true }  o  { "expenseId": "...", "reviewStatus": "confirmed" }
 Authorization: Bearer {token}
 ```

@@ -1154,6 +1154,82 @@
           }
         }
       }
+    },
+    "/expenses/paymentMethods": {
+      "get": {
+        "tags": ["Expenses"],
+        "summary": "List the payment methods of the expenses",
+        "description": "Returns the payment methods of the company. A paymentMethodId never changes, so the ERP can map each one to its own payment type.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment methods",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "paymentMethods": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "paymentMethodId": {
+                            "type": "string",
+                            "example": "2"
+                          },
+                          "paymentMethodName": {
+                            "type": "string",
+                            "example": "Tarjeta de crédito"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "A payment method is deactivated, never deleted."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The company does not have Billivo Gastos access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Billivo Gastos request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2276,7 +2352,8 @@
           },
           "paymentMethodId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "See `GET /expenses/paymentMethods`."
           },
           "paymentMethodName": {
             "type": "string"

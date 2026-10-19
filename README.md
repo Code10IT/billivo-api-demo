@@ -541,7 +541,26 @@ Un `categoryId` nunca cambia y una categoría no se elimina, solo se desactiva (
 
 ---
 
-### 10. Billivo Gastos: Cambiar el Estado de un Gasto
+### 10. Billivo Gastos: Métodos de Pago
+
+```
+GET /expenses/paymentMethods
+```
+
+```json
+{
+  "paymentMethods": [
+    { "paymentMethodId": "2", "paymentMethodName": "Tarjeta de crédito", "active": true },
+    { "paymentMethodId": "4", "paymentMethodName": "Efectivo", "active": true }
+  ]
+}
+```
+
+Funciona igual que las categorías: un `paymentMethodId` nunca cambia y un método de pago no se elimina, solo se desactiva (`active: false`). El ERP puede asociar cada `paymentMethodId` a su propia forma de pago. Es el valor de `paymentMethodId` en cada gasto.
+
+---
+
+### 11. Billivo Gastos: Cambiar el Estado de un Gasto
 
 ```
 PATCH /expenses/status
