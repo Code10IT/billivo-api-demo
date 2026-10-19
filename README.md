@@ -541,6 +541,68 @@ Un `categoryId` nunca cambia y una categoría no se elimina, solo se desactiva (
 
 ---
 
+### 10. Billivo Gastos: Cambiar el Estado de un Gasto
+
+```
+PATCH /expenses/status
+```
+
+Marca un gasto como pagado o no pagado, o revisa un gasto pendiente (lo confirma o lo rechaza). Cada llamada hace un solo cambio: envía `paid` o `reviewStatus`, no los dos.
+
+**Body para el pago**:
+
+```json
+{
+  "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+  "paid": true
+}
+```
+
+- `paid: true` marca el gasto como pagado. `paid: false` deshace el pago
+- Se permite en cualquier estado del gasto, también si ya está en el ERP o en un período cerrado
+
+**Body para la revisión**:
+
+```json
+{
+  "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+  "reviewStatus": "rejected",
+  "rejectionReason": "Ticket duplicado"
+}
+```
+
+- `reviewStatus: "confirmed"` confirma el gasto. Solo los gastos confirmados salen en `GET /expenses/erp` y en `GET /expenses/export`
+- `reviewStatus: "rejected"` rechaza el gasto. `rejectionReason` es obligatorio (máximo 500 caracteres). Solo se pueden rechazar los gastos que subió un empleado
+- Solo se puede revisar un gasto pendiente. Una revisión es definitiva: un gasto confirmado o rechazado no vuelve a pendiente
+- No se puede revisar un gasto que ya está en el ERP o en un período cerrado
+
+**Respuesta (200)**: el gasto actualizado. Los campos del estado son:
+
+```json
+{
+  "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+  "reviewStatus": "rejected",
+  "reviewedBy": "empresa@ejemplo.com",
+  "reviewedAt": "2026-10-19T10:30:00.000Z",
+  "rejectionReason": "Ticket duplicado",
+  "paidAt": null
+}
+```
+
+`paidAt` es la fecha del pago, o `null` si el gasto no está pagado.
+
+**Respuestas**:
+
+- `200 OK`: Estado actualizado correctamente
+- `400 Bad Request`: Body no válido. También `REJECTION_REASON_REQUIRED` (falta el motivo) y `ONLY_EMPLOYEE_EXPENSES_CAN_BE_REJECTED` (el gasto no lo subió un empleado)
+- `401 Unauthorized`: No autorizado
+- `403 Forbidden`: La empresa no tiene acceso a Billivo Gastos
+- `404 Not Found`: Gasto no encontrado
+- `409 Conflict`: `EXPENSE_ALREADY_REVIEWED` (el gasto no está pendiente), `EXPENSE_IN_ERP` o `EXPENSE_IN_CLOSED_PERIOD`
+- `502 Bad Gateway`: Falló la petición a Billivo Gastos
+
+---
+
 ## Ejemplos de Uso
 
 ### Ejemplo 1: Crear Factura en Modo NO_ERP (Numeración Automática)
@@ -819,6 +881,30 @@ curl -X POST "https://api.billivo.com/expenses/erp" \
   -H "Authorization: Bearer {tu_token}" \
   -H "Content-Type: application/json" \
   -d '{ "confirmed": [ { "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77", "erpId": "FAC-88" } ] }'
+```
+
+---
+
+### Ejemplo 9: Cambiar el Estado de un Gasto
+
+```bash
+# Marcar un gasto como pagado
+curl -X PATCH "https://api.billivo.com/expenses/status" \
+  -H "Authorization: Bearer {tu_token}" \
+  -H "Content-Type: application/json" \
+  -d '{ "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77", "paid": true }'
+
+# Confirmar un gasto pendiente
+curl -X PATCH "https://api.billivo.com/expenses/status" \
+  -H "Authorization: Bearer {tu_token}" \
+  -H "Content-Type: application/json" \
+  -d '{ "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77", "reviewStatus": "confirmed" }'
+
+# Rechazar un gasto pendiente
+curl -X PATCH "https://api.billivo.com/expenses/status" \
+  -H "Authorization: Bearer {tu_token}" \
+  -H "Content-Type: application/json" \
+  -d '{ "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77", "reviewStatus": "rejected", "rejectionReason": "Ticket duplicado" }'
 ```
 
 ---

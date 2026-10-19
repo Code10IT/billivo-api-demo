@@ -127,12 +127,14 @@ GET /expenses/export?from=2026-01-01&to=2026-03-31&format=json&page=1&limit=100
 GET /expenses/erp?after={ultimoExpenseId}&limit=100
 POST /expenses/erp        { "confirmed": [ { "expenseId": "...", "erpId": "FAC-88" } ] }
 GET /expenses/categories
+PATCH /expenses/status   { "expenseId": "...", "paid": true }  o  { "expenseId": "...", "reviewStatus": "confirmed" }
 Authorization: Bearer {token}
 ```
 
 - La empresa necesita acceso a Billivo Gastos (si no, `403`)
 - Sin `format=json`, `/expenses/export` devuelve un enlace a un ZIP con el Excel
 - `/expenses/erp` devuelve los gastos que el ERP aún no registró. Tras el `POST`, el gasto ya no se puede editar en Billivo Gastos
+- `/expenses/status` marca un gasto como pagado (`paid`) o revisa uno pendiente (`reviewStatus`: `confirmed` o `rejected`, con `rejectionReason`)
 
 ---
 
