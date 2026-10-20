@@ -128,6 +128,8 @@ GET /expenses/erp?after={ultimoExpenseId}&limit=100
 POST /expenses/erp        { "confirmed": [ { "expenseId": "...", "erpId": "FAC-88" } ] }
 GET /expenses/categories
 GET /expenses/paymentMethods
+GET /expenses/suppliers
+PATCH /expenses/suppliers { "supplierId": "...", "erpId": "PROV-120" }
 PATCH /expenses/status   { "expenseId": "...", "paid": true }  o  { "expenseId": "...", "reviewStatus": "confirmed" }
 Authorization: Bearer {token}
 ```
@@ -136,6 +138,7 @@ Authorization: Bearer {token}
 - Sin `format=json`, `/expenses/export` devuelve un enlace a un ZIP con el Excel
 - `/expenses/erp` devuelve los gastos que el ERP aún no registró. Tras el `POST`, el gasto ya no se puede editar en Billivo Gastos
 - `/expenses/status` marca un gasto como pagado (`paid`) o revisa uno pendiente (`reviewStatus`: `confirmed` o `rejected`, con `rejectionReason`)
+- `/expenses/suppliers` lista los proveedores (por NIF). Con `PATCH` el ERP guarda su id en `erpId`
 
 ---
 

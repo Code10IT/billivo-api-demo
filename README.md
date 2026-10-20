@@ -624,6 +624,76 @@ Marca un gasto como pagado o no pagado, o revisa un gasto pendiente (lo confirma
 
 ---
 
+### 12. Billivo Gastos: Proveedores
+
+```
+GET /expenses/suppliers
+PATCH /expenses/suppliers
+```
+
+Los proveedores de los gastos. Billivo Gastos los crea a partir de las facturas que revisa la empresa. Un proveedor se identifica por su NIF (`taxId`), que se guarda solo con letras y dígitos en mayúsculas: `B-123 456` se guarda como `B123456`.
+
+**Respuesta GET (200)**:
+
+```json
+{
+  "suppliers": [
+    {
+      "supplierId": "3b241101-e2bb-4255-8caf-4136c566a962",
+      "taxId": "A61893871",
+      "name": "Factor Energia, S.A.",
+      "address": "Calle Ejemplo 1, 08001 Barcelona",
+      "country": "ES",
+      "iban": "ES9121000418450200051332",
+      "bic": "CAIXESBBXXX",
+      "bankName": "CaixaBank",
+      "erpId": null,
+      "active": true
+    }
+  ]
+}
+```
+
+Un proveedor no se elimina, solo se desactiva (`active: false`). El `supplierId` nunca cambia.
+
+**Body PATCH**: el `supplierId` y los campos que cambian. Un campo que no envías no cambia. Un campo vacío (`""` o `null`) se borra, salvo `taxId` y `name`, que son obligatorios.
+
+```json
+{
+  "supplierId": "3b241101-e2bb-4255-8caf-4136c566a962",
+  "erpId": "PROV-120"
+}
+```
+
+| Campo | Máximo |
+| --- | --- |
+| `taxId` | 50 caracteres |
+| `name` | 255 caracteres |
+| `address` | 500 caracteres |
+| `country` | 3 caracteres (código ISO, p. ej. `ES`) |
+| `iban` | 34 caracteres, sin espacios |
+| `bic` | 11 caracteres |
+| `bankName` | 255 caracteres |
+| `erpId` | 100 caracteres |
+| `active` | `true` o `false` |
+
+- El ERP puede guardar su propio id del proveedor en `erpId`
+- Los gastos no tienen `supplierId`: el proveedor de un gasto es el que tiene el mismo NIF que su `merchantTaxId`
+
+**Respuesta PATCH (200)**: el proveedor actualizado, con los mismos campos que el GET.
+
+**Respuestas**:
+
+- `200 OK`: Correcto
+- `400 Bad Request`: Body no válido, falta `supplierId` o un campo no es válido
+- `401 Unauthorized`: No autorizado
+- `403 Forbidden`: La empresa no tiene acceso a Billivo Gastos
+- `404 Not Found`: Proveedor no encontrado
+- `409 Conflict`: `SUPPLIER_TAX_ID_EXISTS` (otro proveedor tiene ese NIF)
+- `502 Bad Gateway`: Falló la petición a Billivo Gastos
+
+---
+
 ## Ejemplos de Uso
 
 ### Ejemplo 1: Crear Factura en Modo NO_ERP (Numeración Automática)

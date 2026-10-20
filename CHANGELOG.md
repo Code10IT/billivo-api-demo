@@ -2,6 +2,12 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.4.0 (2026-10-20)
+
+### Added
+- `GET /expenses/suppliers`: list the suppliers of the expenses.
+- `PATCH /expenses/suppliers`: change a supplier, for example to save the ERP id in `erpId`.
+
 ## 1.3.2 (2026-10-19)
 
 ### Added
