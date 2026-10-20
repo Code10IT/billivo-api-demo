@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.4.0"
+    "version": "1.4.1"
   },
   "servers": [
     {
@@ -1241,7 +1241,7 @@
           "Expenses"
         ],
         "summary": "List the suppliers of the expenses",
-        "description": "Returns the suppliers of the company, also the inactive ones. Billivo Gastos creates them from the invoices the company reviews. A supplier is identified by its tax id. An expense has no supplierId: its supplier is the one with the same tax id as its `merchantTaxId`.",
+        "description": "Returns the suppliers of the company, also the inactive ones. Billivo Gastos creates them from the invoices the company reviews. A supplier is identified by its tax id. To compare tax ids, the EU VAT prefix is ignored: `ES74894836M` and `74894836M` are the same supplier. An expense has no supplierId: its supplier is the one with the same tax id as its `merchantTaxId`.",
         "security": [
           {
             "BearerAuth": []
@@ -1431,7 +1431,7 @@
             }
           },
           "409": {
-            "description": "SUPPLIER_TAX_ID_EXISTS: another supplier has this tax id",
+            "description": "SUPPLIER_TAX_ID_EXISTS: another supplier has this tax id, with or without the EU VAT prefix",
             "content": {
               "application/json": {
                 "schema": {
@@ -1479,7 +1479,7 @@
           "taxId": {
             "type": "string",
             "example": "A61893871",
-            "description": "Stored with letters and digits only, in upper case."
+            "description": "Stored with letters and digits only, in upper case. It keeps the EU VAT prefix when the invoice shows it."
           },
           "name": {
             "type": "string",

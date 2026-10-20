@@ -631,7 +631,7 @@ GET /expenses/suppliers
 PATCH /expenses/suppliers
 ```
 
-Los proveedores de los gastos. Billivo Gastos los crea a partir de las facturas que revisa la empresa. Un proveedor se identifica por su NIF (`taxId`), que se guarda solo con letras y dígitos en mayúsculas: `B-123 456` se guarda como `B123456`.
+Los proveedores de los gastos. Billivo Gastos los crea a partir de las facturas que revisa la empresa. Un proveedor se identifica por su NIF (`taxId`), que se guarda solo con letras y dígitos en mayúsculas: `B-123 456` se guarda como `B123456`. Para comparar NIF se ignora el prefijo de IVA de la UE: `ES74894836M` y `74894836M` son el mismo proveedor. El `taxId` conserva el prefijo si la factura lo trae.
 
 **Respuesta GET (200)**:
 
@@ -678,7 +678,7 @@ Un proveedor no se elimina, solo se desactiva (`active: false`). El `supplierId`
 | `active` | `true` o `false` |
 
 - El ERP puede guardar su propio id del proveedor en `erpId`
-- Los gastos no tienen `supplierId`: el proveedor de un gasto es el que tiene el mismo NIF que su `merchantTaxId`
+- Los gastos no tienen `supplierId`: el proveedor de un gasto es el que tiene el mismo NIF que su `merchantTaxId`, sin tener en cuenta el prefijo de IVA de la UE
 
 **Respuesta PATCH (200)**: el proveedor actualizado, con los mismos campos que el GET.
 
@@ -689,7 +689,7 @@ Un proveedor no se elimina, solo se desactiva (`active: false`). El `supplierId`
 - `401 Unauthorized`: No autorizado
 - `403 Forbidden`: La empresa no tiene acceso a Billivo Gastos
 - `404 Not Found`: Proveedor no encontrado
-- `409 Conflict`: `SUPPLIER_TAX_ID_EXISTS` (otro proveedor tiene ese NIF)
+- `409 Conflict`: `SUPPLIER_TAX_ID_EXISTS` (otro proveedor tiene ese NIF, con o sin prefijo de IVA de la UE)
 - `502 Bad Gateway`: Falló la petición a Billivo Gastos
 
 ---

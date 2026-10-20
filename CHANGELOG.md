@@ -2,6 +2,11 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.4.1 (2026-10-20)
+
+### Changed
+- Suppliers: the EU VAT prefix is ignored to compare tax ids, so `ES74894836M` and `74894836M` are the same supplier.
+
 ## 1.4.0 (2026-10-20)
 
 ### Added
