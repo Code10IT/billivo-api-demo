@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.4.2"
+    "version": "1.4.3"
   },
   "servers": [
     {
@@ -978,7 +978,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "description": "The updated expense. The status fields are listed here.",
+                  "description": "The updated expense, with every column of the expense. Only the status fields are listed here. It is not the `Expense` schema: amounts are strings (for example `\"121.00\"`), the dates of the `Expense` schema are date-times (for example `\"2026-03-12T00:00:00.000Z\"`), and it does not have `categoryName`, `paymentMethodName`, `documentTypeName`, `vatLines` or `receipt`.",
                   "properties": {
                     "expenseId": {
                       "type": "string",
@@ -2534,6 +2534,20 @@
             "type": "string",
             "format": "uuid"
           },
+          "documentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of the scanned document of the expense."
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of the company of the token."
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "Email of the user who uploaded the expense: the company account or one of its employees."
+          },
           "title": {
             "type": "string",
             "nullable": true
@@ -2544,16 +2558,26 @@
           },
           "expenseDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true,
+            "description": "null only in `GET /expenses/erp`, when the expense was confirmed without a date. `GET /expenses/export` filters by this date, so there it is never null."
           },
           "operationDate": {
             "type": "string",
             "format": "date",
             "nullable": true
           },
+          "closingDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date that places the expense in a closing period. By default it is `expenseDate`."
+          },
           "totalAmount": {
             "type": "number",
-            "example": 121
+            "nullable": true,
+            "example": 121,
+            "description": "null when the expense was confirmed without an amount."
           },
           "currency": {
             "type": "string",
@@ -2620,10 +2644,12 @@
           },
           "categoryId": {
             "type": "string",
-            "description": "See `GET /expenses/categories`."
+            "nullable": true,
+            "description": "See `GET /expenses/categories`. null when the expense has no category."
           },
           "categoryName": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of the category. Empty string when the expense has no category."
           },
           "paymentMethodId": {
             "type": "string",
@@ -2631,7 +2657,8 @@
             "description": "See `GET /expenses/paymentMethods`."
           },
           "paymentMethodName": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of the payment method. Empty string when the expense has no payment method."
           },
           "dueDate": {
             "type": "string",
@@ -2691,6 +2718,59 @@
             "format": "date-time",
             "nullable": true,
             "description": "Date and time when the expense was marked as paid: in the web, through `PATCH /expenses/status`, or when it got a payment method with `markAsPaid`. It is not the bank payment date. Marking a paid expense again keeps the first date. null when the expense is not paid."
+          },
+          "reviewedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "Email of the user who reviewed the expense. null for expenses confirmed before the review existed."
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reason of a rejection. These endpoints only return confirmed expenses, so it is always null."
+          },
+          "ocrStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "parsed",
+              "confirmed",
+              "failed"
+            ],
+            "description": "Status of the automatic reading of the document."
+          },
+          "ocrConfidence": {
+            "type": "number",
+            "nullable": true,
+            "description": "How sure the automatic reading is that every field is right, from 0 to 100. null if it did not give a value."
+          },
+          "ocrConfirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Date and time when the user confirmed the data of the automatic reading."
+          },
+          "recordHash": {
+            "type": "string",
+            "nullable": true,
+            "description": "SHA-256 (hex) of the fiscal fields of the expense and the hash of its document. It detects a change of the data or of the document."
+          },
+          "closingPeriodId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Id of the closing period that contains the expense. null while the period is open."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date and time when the expense was created."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Date and time of the last change of the expense."
           },
           "vatLines": {
             "type": "array",

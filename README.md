@@ -597,7 +597,7 @@ Marca un gasto como pagado o no pagado, o revisa un gasto pendiente (lo confirma
 - Solo se puede revisar un gasto pendiente. Una revisión es definitiva: un gasto confirmado o rechazado no vuelve a pendiente
 - No se puede revisar un gasto que ya está en el ERP o en un período cerrado
 
-**Respuesta (200)**: el gasto actualizado. Los campos del estado son:
+**Respuesta (200)**: el gasto actualizado, con todas sus columnas. No tiene la forma de la [Estructura de Gasto](#estructura-de-gasto): los importes son texto (`"121.00"`), las fechas llevan hora (`"2026-03-12T00:00:00.000Z"`) y no incluye `categoryName`, `paymentMethodName`, `documentTypeName`, `vatLines` ni `receipt`. Los campos del estado son:
 
 ```json
 {
@@ -1158,9 +1158,13 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 ```json
 {
   "expenseId": "8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77",
+  "documentId": "3c9a1f2e-7b4d-4e8a-9f01-5d2c6b7a8e90",
+  "companyId": "0d7e5b1a-2c3f-4a6b-8e9d-1f2a3b4c5d6e",
+  "createdBy": "empleado@ejemplo.com",
   "title": "Taxi aeropuerto",
   "expenseDate": "2026-03-12",
   "operationDate": null,
+  "closingDate": "2026-03-12",
   "totalAmount": 121,
   "currency": "EUR",
   "taxBase": 100,
@@ -1184,6 +1188,15 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
   "reviewStatus": "confirmed",
   "reviewedAt": "2026-03-13T09:15:00.000Z",
   "paidAt": "2026-03-20T11:02:41.000Z",
+  "reviewedBy": "empresa@ejemplo.com",
+  "rejectionReason": null,
+  "ocrStatus": "confirmed",
+  "ocrConfidence": 95,
+  "ocrConfirmedAt": "2026-03-12T18:40:12.000Z",
+  "recordHash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "closingPeriodId": null,
+  "createdAt": "2026-03-12T18:39:55.000Z",
+  "updatedAt": "2026-03-13T09:15:00.000Z",
   "vatLines": [{ "vatPercent": 21, "taxBase": 100, "vatAmount": 21 }],
   "receipt": {
     "fileName": "taxi.pdf",
@@ -1193,6 +1206,7 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 }
 ```
 
+- `expenseDate`, `totalAmount` y `categoryId` pueden ser `null` si el gasto se confirmó sin esos datos. `expenseDate` nunca es `null` en `GET /expenses/export`, porque ese endpoint filtra por esa fecha. Sin categoría o método de pago, `categoryName` y `paymentMethodName` valen `""`
 - `vatLines`: desglose de IVA, una línea por tipo
 - `irpfPercent` e `irpfAmount`: tipo (%) y cuota de la retención de IRPF, calculada sobre `taxBase`. Sin retención, los dos valen `0`. `totalAmount` es base más IVA, así que el importe a pagar es `totalAmount - irpfAmount`
 - `dueDate`: fecha de vencimiento del pago, o `null` si la factura no la indica
@@ -1201,7 +1215,14 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 - `erpId`: el id que el ERP envió en `POST /expenses/erp`
 - `reviewStatus`: siempre `confirmed`, porque estos endpoints solo devuelven gastos confirmados. `reviewedAt` es la fecha y hora de la revisión, o `null` en los gastos confirmados antes de que existiera la revisión
 - `paidAt`: fecha y hora en que el gasto se marcó como pagado, o `null` si no está pagado. Ver [Cambiar el Estado de un Gasto](#11-billivo-gastos-cambiar-el-estado-de-un-gasto)
-- La respuesta incluye además otros campos del gasto (dirección del emisor y del receptor, descuento, país, fechas de alta y modificación)
+- `documentId`: id del documento escaneado. `companyId`: id de la empresa del token
+- `createdBy`: email del usuario que subió el gasto (la cuenta de la empresa o uno de sus empleados). `reviewedBy`: email del usuario que lo revisó, o `null` en los gastos confirmados antes de que existiera la revisión
+- `rejectionReason`: siempre `null`, porque estos endpoints no devuelven gastos rechazados
+- `closingDate`: fecha que ubica el gasto en un período de cierre. Por defecto es `expenseDate`. `closingPeriodId`: id del período de cierre que contiene el gasto, o `null` si el período está abierto
+- `ocrStatus` (`pending`, `parsed`, `confirmed` o `failed`), `ocrConfidence` (de 0 a 100) y `ocrConfirmedAt`: estado, confianza y fecha de confirmación de la lectura automática del documento
+- `recordHash`: SHA-256 (hexadecimal) de los campos fiscales del gasto y del hash de su documento. Permite detectar un cambio de los datos o del documento
+- `createdAt` y `updatedAt`: fecha y hora de alta y de la última modificación
+- La respuesta incluye además la dirección del emisor y del receptor, el descuento, el país y el tipo de documento (`merchantAddress`, `recipientName`, `recipientTaxId`, `recipientAddress`, `discountAmount`, `country`, `documentType`)
 
 ---
 

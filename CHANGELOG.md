@@ -2,6 +2,13 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.4.3 (2026-10-26)
+
+### Changed
+- Documentation only, the API does not change: the `Expense` schema now lists every field that `GET /expenses/export` and `GET /expenses/erp` return. New in the documentation: `documentId`, `companyId`, `createdBy`, `closingDate`, `reviewedBy`, `rejectionReason`, `ocrStatus`, `ocrConfidence`, `ocrConfirmedAt`, `recordHash`, `closingPeriodId`, `createdAt` and `updatedAt`.
+- `expenseDate`, `totalAmount` and `categoryId` can be null. `categoryName` and `paymentMethodName` are an empty string when the expense has no category or payment method.
+- `PATCH /expenses/status`: the response is the raw expense, not the `Expense` schema (amounts are strings and dates have a time).
+
 ## 1.4.2 (2026-10-26)
 
 ### Changed
