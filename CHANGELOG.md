@@ -2,6 +2,12 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.4.2 (2026-10-26)
+
+### Changed
+- Documentation only, the API does not change: the `Expense` schema of `GET /expenses/export` and `GET /expenses/erp` now lists `reviewStatus`, `reviewedAt` and `paidAt`, which these endpoints already returned.
+- `paidAt` is the date and time when the expense was marked as paid, not the bank payment date.
+
 ## 1.4.1 (2026-10-20)
 
 ### Changed

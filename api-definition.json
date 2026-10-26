@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.4.1"
+    "version": "1.4.2"
   },
   "servers": [
     {
@@ -1009,7 +1009,7 @@
                       "type": "string",
                       "format": "date-time",
                       "nullable": true,
-                      "description": "Date of the payment. null when the expense is not paid."
+                      "description": "Date and time when the expense was marked as paid: in the web, through `PATCH /expenses/status`, or when it got a payment method with `markAsPaid`. It is not the bank payment date. Marking a paid expense again keeps the first date. null when the expense is not paid."
                     }
                   }
                 }
@@ -2672,6 +2672,25 @@
             "type": "string",
             "nullable": true,
             "description": "The id that the ERP sent in `POST /expenses/erp`."
+          },
+          "reviewStatus": {
+            "type": "string",
+            "enum": [
+              "confirmed"
+            ],
+            "description": "Review status. These endpoints only return confirmed expenses, so it is always `confirmed`."
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Date and time of the review. null for expenses confirmed before the review existed."
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Date and time when the expense was marked as paid: in the web, through `PATCH /expenses/status`, or when it got a payment method with `markAsPaid`. It is not the bank payment date. Marking a paid expense again keeps the first date. null when the expense is not paid."
           },
           "vatLines": {
             "type": "array",

@@ -610,7 +610,7 @@ Marca un gasto como pagado o no pagado, o revisa un gasto pendiente (lo confirma
 }
 ```
 
-`paidAt` es la fecha del pago, o `null` si el gasto no está pagado.
+`paidAt` es la fecha y hora en que el gasto se marcó como pagado, o `null` si no está pagado. No es la fecha del pago en el banco. Se rellena al marcarlo en la web, con `paid: true` o al asignarle un método de pago con `markAsPaid`. Marcar otra vez un gasto pagado conserva la primera fecha. `paid: false` lo deja en `null` y no se guarda historial. El gasto actualizado también sale en `GET /expenses/export` y `GET /expenses/erp` con el mismo `paidAt`.
 
 **Respuestas**:
 
@@ -1181,6 +1181,9 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
   "bankName": null,
   "documentTypeName": "Factura",
   "erpId": null,
+  "reviewStatus": "confirmed",
+  "reviewedAt": "2026-03-13T09:15:00.000Z",
+  "paidAt": "2026-03-20T11:02:41.000Z",
   "vatLines": [{ "vatPercent": 21, "taxBase": 100, "vatAmount": 21 }],
   "receipt": {
     "fileName": "taxi.pdf",
@@ -1196,6 +1199,8 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 - `iban`, `bic` y `bankName`: cuenta del emisor para pagar por transferencia (IBAN sin espacios, SWIFT/BIC y nombre del banco). Valen `null` si el gasto no se paga por transferencia
 - `receipt.url`: enlace al ticket o factura escaneada. Caduca a los 5 minutos
 - `erpId`: el id que el ERP envió en `POST /expenses/erp`
+- `reviewStatus`: siempre `confirmed`, porque estos endpoints solo devuelven gastos confirmados. `reviewedAt` es la fecha y hora de la revisión, o `null` en los gastos confirmados antes de que existiera la revisión
+- `paidAt`: fecha y hora en que el gasto se marcó como pagado, o `null` si no está pagado. Ver [Cambiar el Estado de un Gasto](#11-billivo-gastos-cambiar-el-estado-de-un-gasto)
 - La respuesta incluye además otros campos del gasto (dirección del emisor y del receptor, descuento, país, fechas de alta y modificación)
 
 ---
