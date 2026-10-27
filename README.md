@@ -438,7 +438,7 @@ La primera serie de un tipo pasa a ser la serie por defecto de ese tipo. Una ser
 Los endpoints `/expenses/*` leen los gastos de Billivo Gastos de la empresa del token. La empresa debe tener acceso a Billivo Gastos, si no la API responde `403`. Solo se devuelven gastos confirmados y no eliminados.
 
 ```
-GET /expenses/export?from={YYYY-MM-DD}&to={YYYY-MM-DD}&format=json&page={pagina}&limit={limite}
+GET /expenses/export?from={YYYY-MM-DD}&to={YYYY-MM-DD}&format=json&page={pagina}&limit={limite}&paid={true|false}
 ```
 
 | Parámetro       | Tipo    | Requerido | Descripción                                                            |
@@ -449,6 +449,7 @@ GET /expenses/export?from={YYYY-MM-DD}&to={YYYY-MM-DD}&format=json&page={pagina}
 | `includeImages` | boolean | No        | Solo ZIP. Con `true`, el ZIP incluye los tickets y facturas escaneados |
 | `page`          | integer | No        | Solo JSON. Por defecto 1                                               |
 | `limit`         | integer | No        | Solo JSON. Por defecto 100, máximo 500                                 |
+| `paid`          | boolean | No        | `true` solo gastos pagados (con `paidAt`), `false` solo no pagados     |
 
 **Respuesta ZIP (200)**: un enlace que caduca a los 5 minutos. El ZIP contiene un Excel con los gastos.
 
@@ -606,11 +607,15 @@ Marca un gasto como pagado o no pagado, o revisa un gasto pendiente (lo confirma
   "reviewedBy": "empresa@ejemplo.com",
   "reviewedAt": "2026-10-19T10:30:00.000Z",
   "rejectionReason": "Ticket duplicado",
-  "paidAt": null
+  "paidAt": null,
+  "paidSource": null,
+  "paidBy": null
 }
 ```
 
-`paidAt` es la fecha y hora en que el gasto se marcó como pagado, o `null` si no está pagado. No es la fecha del pago en el banco. Se rellena al marcarlo en la web, con `paid: true` o al asignarle un método de pago con `markAsPaid`. Marcar otra vez un gasto pagado conserva la primera fecha. `paid: false` lo deja en `null` y no se guarda historial. El gasto actualizado también sale en `GET /expenses/export` y `GET /expenses/erp` con el mismo `paidAt`.
+`paidAt` es la fecha y hora en que el gasto se marcó como pagado, o `null` si no está pagado. No es la fecha del pago en el banco. Se rellena al marcarlo en la web, con `paid: true` o al asignarle un método de pago con `markAsPaid`. Marcar otra vez un gasto pagado conserva la primera fecha. `paid: false` deja en `null` `paidAt`, `paidSource` y `paidBy`, y no se guarda historial.
+
+`paidSource` indica cómo se marcó como pagado: `web` (la app de Billivo Gastos, web o móvil), `api` (`PATCH /expenses/status`) o `payment_method` (recibió un método de pago con `markAsPaid`). `paidBy` es el email del usuario que lo marcó. Por la API es la cuenta de Billivo Gastos de la empresa. Los dos conservan el primer valor si se marca otra vez, y valen `null` en los gastos marcados como pagados antes de la versión 1.5.0. El gasto actualizado también sale en `GET /expenses/export` y `GET /expenses/erp` con los mismos valores.
 
 **Respuestas**:
 
@@ -1188,6 +1193,8 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
   "reviewStatus": "confirmed",
   "reviewedAt": "2026-03-13T09:15:00.000Z",
   "paidAt": "2026-03-20T11:02:41.000Z",
+  "paidSource": "api",
+  "paidBy": "empresa@ejemplo.com",
   "reviewedBy": "empresa@ejemplo.com",
   "rejectionReason": null,
   "ocrStatus": "confirmed",
@@ -1214,7 +1221,7 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 - `receipt.url`: enlace al ticket o factura escaneada. Caduca a los 5 minutos
 - `erpId`: el id que el ERP envió en `POST /expenses/erp`
 - `reviewStatus`: siempre `confirmed`, porque estos endpoints solo devuelven gastos confirmados. `reviewedAt` es la fecha y hora de la revisión, o `null` en los gastos confirmados antes de que existiera la revisión
-- `paidAt`: fecha y hora en que el gasto se marcó como pagado, o `null` si no está pagado. Ver [Cambiar el Estado de un Gasto](#11-billivo-gastos-cambiar-el-estado-de-un-gasto)
+- `paidAt`, `paidSource` y `paidBy`: cuándo, cómo (`web`, `api` o `payment_method`) y quién marcó el gasto como pagado, o `null` si no está pagado. Ver [Cambiar el Estado de un Gasto](#11-billivo-gastos-cambiar-el-estado-de-un-gasto)
 - `documentId`: id del documento escaneado. `companyId`: id de la empresa del token
 - `createdBy`: email del usuario que subió el gasto (la cuenta de la empresa o uno de sus empleados). `reviewedBy`: email del usuario que lo revisó, o `null` en los gastos confirmados antes de que existiera la revisión
 - `rejectionReason`: siempre `null`, porque estos endpoints no devuelven gastos rechazados

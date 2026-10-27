@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.4.3"
+    "version": "1.5.0"
   },
   "servers": [
     {
@@ -583,6 +583,15 @@
               "maximum": 500,
               "default": 100
             }
+          },
+          {
+            "name": "paid",
+            "in": "query",
+            "required": false,
+            "description": "`true` returns only paid expenses (with `paidAt`), `false` only unpaid ones. Without it, both. It works with the ZIP and with JSON.",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1010,6 +1019,21 @@
                       "format": "date-time",
                       "nullable": true,
                       "description": "Date and time when the expense was marked as paid: in the web, through `PATCH /expenses/status`, or when it got a payment method with `markAsPaid`. It is not the bank payment date. Marking a paid expense again keeps the first date. null when the expense is not paid."
+                    },
+                    "paidSource": {
+                      "type": "string",
+                      "enum": [
+                        "web",
+                        "api",
+                        "payment_method"
+                      ],
+                      "nullable": true,
+                      "description": "How the expense was marked as paid: `web` (the Billivo Expenses app, web or mobile), `api` (`PATCH /expenses/status`) or `payment_method` (it got a payment method with `markAsPaid`). Marking a paid expense again keeps the first value. null when the expense is not paid, and for expenses marked as paid before version 1.5.0."
+                    },
+                    "paidBy": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Email of the user who marked the expense as paid. Through the API it is the Billivo Expenses account of the company. Marking a paid expense again keeps the first value. null when the expense is not paid, and for expenses marked as paid before version 1.5.0."
                     }
                   }
                 }
@@ -2718,6 +2742,21 @@
             "format": "date-time",
             "nullable": true,
             "description": "Date and time when the expense was marked as paid: in the web, through `PATCH /expenses/status`, or when it got a payment method with `markAsPaid`. It is not the bank payment date. Marking a paid expense again keeps the first date. null when the expense is not paid."
+          },
+          "paidSource": {
+            "type": "string",
+            "enum": [
+              "web",
+              "api",
+              "payment_method"
+            ],
+            "nullable": true,
+            "description": "How the expense was marked as paid: `web` (the Billivo Expenses app, web or mobile), `api` (`PATCH /expenses/status`) or `payment_method` (it got a payment method with `markAsPaid`). Marking a paid expense again keeps the first value. null when the expense is not paid, and for expenses marked as paid before version 1.5.0."
+          },
+          "paidBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "Email of the user who marked the expense as paid. Through the API it is the Billivo Expenses account of the company. Marking a paid expense again keeps the first value. null when the expense is not paid, and for expenses marked as paid before version 1.5.0."
           },
           "reviewedBy": {
             "type": "string",

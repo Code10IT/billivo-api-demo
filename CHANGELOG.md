@@ -2,6 +2,12 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.5.0 (2026-10-26)
+
+### Added
+- `paidSource` and `paidBy` fields on expenses: how the expense was marked as paid (`web`, `api` or `payment_method`) and the email of the user who did it. null when the expense is not paid, and for expenses marked as paid before this version.
+- `paid` filter on `GET /expenses/export`: `true` returns only paid expenses, `false` only unpaid ones.
+
 ## 1.4.3 (2026-10-26)
 
 ### Changed
