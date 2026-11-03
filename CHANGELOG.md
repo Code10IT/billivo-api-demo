@@ -2,6 +2,16 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.6.0 (2026-11-03)
+
+### Added
+- Corrective invoices of an original invoice that is not in Billivo (for example, issued in another system). New optional header fields with the data of the original invoice: `correctedInvoiceDate`, `correctedTotalExclTax`, `correctedTotalTax` and `correctedEquivalenceSurchargeTax`.
+- `correctedInvoiceDate` is required if the original invoice is not in Billivo. `correctedTotalExclTax` and `correctedTotalTax` are also required for a substitution (`correctiveType` = `S`).
+- If the original invoice is in Billivo, Billivo uses its data and ignores these fields.
+
+### Fixed
+- `POST /invoice` returned a 500 error ("Cannot read properties of undefined") for a corrective invoice of an original invoice that is not in Billivo.
+
 ## 1.5.0 (2026-10-26)
 
 ### Added

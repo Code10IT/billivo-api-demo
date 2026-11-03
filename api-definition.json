@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.5.0"
+    "version": "1.6.0"
   },
   "servers": [
     {
@@ -1682,6 +1682,27 @@
             "maxLength": 60,
             "description": "If you are correcting an invoice (invoiceType = R), use this field to reference the original invoice.",
             "example": "INV-2025-001200"
+          },
+          "correctedInvoiceDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Issue date of the original invoice (YYYY-MM-DD). Required if the original invoice is not in Billivo (for example, you issued it in another system). If the original invoice is in Billivo, Billivo uses its date and ignores this field.",
+            "example": "2025-03-04"
+          },
+          "correctedTotalExclTax": {
+            "type": "number",
+            "description": "Taxable base of the original invoice. Required for a substitution correction (correctiveType = S) if the original invoice is not in Billivo. If the original invoice is in Billivo, Billivo uses its totals and ignores this field.",
+            "example": 200.0
+          },
+          "correctedTotalTax": {
+            "type": "number",
+            "description": "VAT amount of the original invoice. Required for a substitution correction (correctiveType = S) if the original invoice is not in Billivo. If the original invoice is in Billivo, Billivo uses its totals and ignores this field.",
+            "example": 42.0
+          },
+          "correctedEquivalenceSurchargeTax": {
+            "type": "number",
+            "description": "Equivalence surcharge amount of the original invoice. Send it for a substitution correction (correctiveType = S) if the original invoice is not in Billivo and has an equivalence surcharge. The default value is 0.",
+            "example": 0
           },
           "correctiveType": {
             "type": "string",

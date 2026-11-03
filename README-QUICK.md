@@ -280,6 +280,7 @@ Para facturas rectificativas, añade:
 
 - `correctedInvoiceNumber`: Número de factura a corregir
 - `correctiveType`: "I" (diferencia) o "S" (sustitución)
+- Si la factura original no está en Billivo (la emitiste en otro sistema): `correctedInvoiceDate` (obligatorio) y, si es "S", `correctedTotalExclTax` y `correctedTotalTax`
 
 ---
 

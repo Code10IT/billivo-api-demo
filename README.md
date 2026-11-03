@@ -878,6 +878,11 @@ curl -X POST https://api.billivo.com/invoice \
 - `correctiveType`:
   - `I`: Rectificación por diferencia (ajuste sobre la factura original)
   - `S`: Rectificación por sustitución (reemplaza completamente la factura original)
+- **Factura original emitida en otro sistema**: si la factura original no está en Billivo (por ejemplo, la emitiste antes de usar Billivo), envía también estos datos de la original:
+  - `correctedInvoiceDate`: fecha de emisión (`YYYY-MM-DD`). Obligatorio
+  - `correctedTotalExclTax` y `correctedTotalTax`: base imponible y cuota de IVA. Obligatorios si `correctiveType` es `S`
+  - `correctedEquivalenceSurchargeTax`: cuota de recargo de equivalencia, si la original la tenía y `correctiveType` es `S`. Por defecto `0`
+  - Si la factura original está en Billivo, Billivo usa sus datos e ignora estos campos
 - **Importante**: Envía los valores reales (nuevos precios/cantidades) que deben quedar después de la rectificación. El sistema calcula automáticamente la diferencia con la factura original
 
 ---
@@ -1375,6 +1380,7 @@ Excepciones: el `401` por token ausente o inválido devuelve `{ "message": "Unau
 - `previousInvoiceNumber`
 - `correctedInvoiceNumber` (obligatorio para facturas rectificativas)
 - `correctiveType` (obligatorio para facturas rectificativas)
+- `correctedInvoiceDate`, `correctedTotalExclTax`, `correctedTotalTax`, `correctedEquivalenceSurchargeTax` (datos de la factura original; obligatorios si la original no está en Billivo, ver la nota sobre facturas rectificativas)
 - `bankName` (obligatorio si `paymentType` es `Bank Transfer`)
 - `SWIFT` (código SWIFT/BIC del banco, 8 u 11 caracteres)
 - `additionalNotes`
