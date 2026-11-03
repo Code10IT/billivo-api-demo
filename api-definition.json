@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.6.0"
+    "version": "1.6.1"
   },
   "servers": [
     {
@@ -105,7 +105,7 @@
             }
           },
           "400": {
-            "description": "A field is missing or not valid, or `dueDate` is before today. The `error` field is one string with all the problems. The messages are in Spanish.",
+            "description": "A field is missing or not valid, or `dueDate` is before today. For a corrective invoice of an original invoice that is not in Billivo, a 400 also tells you that `correctedInvoiceDate` is missing, or that `correctedTotalExclTax` or `correctedTotalTax` is missing for a substitution. The `error` field is one string with all the problems. The messages are in Spanish.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2731,10 +2731,16 @@
           },
           "documentType": {
             "type": "string",
-            "nullable": true
+            "enum": ["invoice", "ticket", "credit_note"],
+            "nullable": true,
+            "description": "Type of the document: `invoice`, `ticket` or `credit_note` (corrective invoice or refund). An expense with a negative total amount is always `credit_note`. A `credit_note` can also have a positive amount. null when the type is not known.",
+            "example": "invoice"
           },
           "documentTypeName": {
-            "type": "string"
+            "type": "string",
+            "enum": ["Factura", "Tiquet", "Factura rectificativa"],
+            "description": "Name of the document type, as in the Excel export. If `documentType` is null, a PDF is `Factura` and an image is `Tiquet`.",
+            "example": "Factura"
           },
           "country": {
             "type": "string",

@@ -1234,7 +1234,8 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 - `ocrStatus` (`pending`, `parsed`, `confirmed` o `failed`), `ocrConfidence` (de 0 a 100) y `ocrConfirmedAt`: estado, confianza y fecha de confirmación de la lectura automática del documento
 - `recordHash`: SHA-256 (hexadecimal) de los campos fiscales del gasto y del hash de su documento. Permite detectar un cambio de los datos o del documento
 - `createdAt` y `updatedAt`: fecha y hora de alta y de la última modificación
-- La respuesta incluye además la dirección del emisor y del receptor, el descuento, el país y el tipo de documento (`merchantAddress`, `recipientName`, `recipientTaxId`, `recipientAddress`, `discountAmount`, `country`, `documentType`)
+- `documentType`: `invoice`, `ticket` o `credit_note` (factura rectificativa o devolución), o `null` si no se conoce. Un gasto con importe total negativo es siempre `credit_note`. Un `credit_note` también puede tener importe positivo. `documentTypeName` es su nombre: `Factura`, `Tiquet` o `Factura rectificativa`
+- La respuesta incluye además la dirección del emisor y del receptor, el descuento y el país (`merchantAddress`, `recipientName`, `recipientTaxId`, `recipientAddress`, `discountAmount`, `country`)
 
 ---
 

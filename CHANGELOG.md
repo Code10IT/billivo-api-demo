@@ -2,6 +2,15 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.6.1 (2026-11-03)
+
+### Fixed
+- `POST /invoice`: a corrective invoice of an original invoice that is not in Billivo without `correctedInvoiceDate` is now rejected with a 400 error. Before, Billivo sent the date of the corrective invoice to the AEAT as the date of the original invoice.
+- `POST /invoice`: a substitution correction of an original invoice that is not in Billivo without `correctedTotalExclTax` or `correctedTotalTax` now returns a 400 error, not a 500 error.
+
+### Changed
+- Documentation: `documentType` of expenses lists its values (`invoice`, `ticket`, `credit_note`), and `documentTypeName` lists its names. An expense with a negative total amount is always `credit_note`.
+
 ## 1.6.0 (2026-11-03)
 
 ### Added
