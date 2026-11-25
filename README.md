@@ -478,13 +478,13 @@ Ver [Estructura de Gasto](#estructura-de-gasto).
 ### 8. Billivo Gastos: Sincronización con el ERP
 
 ```
-GET /expenses/erp?after={expenseId}&limit={limite}
+GET /expenses/erp?after={expenseId}&limit={limite}&reviewStatus={confirmed|pending}&certified={true|false}
 POST /expenses/erp
 ```
 
 Flujo recomendado:
 
-1. `GET /expenses/erp` devuelve los gastos confirmados que ningún ERP ha registrado todavía, ordenados por `expenseId`. `limit` es 100 por defecto y 500 como máximo
+1. `GET /expenses/erp` devuelve los gastos que ningún ERP ha registrado todavía, ordenados por `expenseId`: los confirmados por defecto, o los pendientes de revisar con `reviewStatus=pending`. Con `certified=true`, solo los que tienen digitalización certificada (fotos hechas con la cámara de la app). `limit` es 100 por defecto y 500 como máximo
 2. Para la página siguiente, envía `after` con el último `expenseId` de la página. Un array `expenses` vacío indica que no quedan más
 3. Registra los gastos en el ERP
 4. `POST /expenses/erp` con el id que cada gasto recibió en el ERP
@@ -520,6 +520,14 @@ Flujo recomendado:
 - Un gasto confirmado sale del `GET /expenses/erp` y ya no se puede editar ni eliminar en Billivo Gastos
 - `rejected` lista los gastos que no existen, no están confirmados, están eliminados o ya tienen otro `erpId`
 - Enviar otra vez el mismo `erpId` es válido, así que puedes repetir una llamada que falló por timeout
+- Si el ERP importa un gasto pero falla antes de registrar su `erpId`, el gasto vuelve a salir en el siguiente `GET`: deduplica por `expenseId`
+
+**Si la revisión y la aprobación se hacen en el ERP** (`reviewStatus=pending`):
+
+1. `GET /expenses/erp?reviewStatus=pending` devuelve los gastos que los empleados han subido y nadie ha revisado todavía
+2. Importa cada gasto en el ERP y confírmalo enseguida con `PATCH /expenses/status` (`reviewStatus: "confirmed"`). Mientras está pendiente, el empleado aún puede editarlo
+3. `POST /expenses/erp` con el `erpId`. Solo se pueden registrar gastos confirmados: un gasto pendiente va a `rejected`
+4. Si el ERP rechaza un gasto, recházalo también en Billivo con `PATCH /expenses/status` (`reviewStatus: "rejected"` y `rejectionReason`), para que el empleado lo vea en la app
 
 ---
 
@@ -977,7 +985,11 @@ curl -X GET "https://api.billivo.com/expenses/erp?limit=100" \
 curl -X GET "https://api.billivo.com/expenses/erp?limit=100&after=8f14e45f-ceea-4a7a-9c1d-0b5e2a1f3c77" \
   -H "Authorization: Bearer {tu_token}"
 
-# 3. Confirmar los gastos registrados en el ERP
+# 3. Leer solo los gastos pendientes de revisar y certificados (revisión en el ERP)
+curl -X GET "https://api.billivo.com/expenses/erp?limit=100&reviewStatus=pending&certified=true" \
+  -H "Authorization: Bearer {tu_token}"
+
+# 4. Confirmar los gastos registrados en el ERP
 curl -X POST "https://api.billivo.com/expenses/erp" \
   -H "Authorization: Bearer {tu_token}" \
   -H "Content-Type: application/json" \
@@ -1214,6 +1226,17 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
     "fileName": "taxi.pdf",
     "mimeType": "application/pdf",
     "url": "https://..."
+  },
+  "certification": {
+    "captureSource": "camera",
+    "certified": true,
+    "fileHash": "4f1c2e…",
+    "fileHashAlgorithm": "SHA-256",
+    "signature": "MEUCIQ…",
+    "signatureAlgorithm": "RSASSA_PSS_SHA_256",
+    "signingKeyId": "…",
+    "signedAt": "2026-03-12T18:39:56.000Z",
+    "softwareVersion": "1.3"
   }
 }
 ```
@@ -1224,8 +1247,9 @@ Los gastos de `GET /expenses/export?format=json` y `GET /expenses/erp` tienen es
 - `dueDate`: fecha de vencimiento del pago, o `null` si la factura no la indica
 - `iban`, `bic` y `bankName`: cuenta del emisor para pagar por transferencia (IBAN sin espacios, SWIFT/BIC y nombre del banco). Valen `null` si el gasto no se paga por transferencia
 - `receipt.url`: enlace al ticket o factura escaneada. Caduca a los 5 minutos
+- `certification`: digitalización certificada (Orden EHA/962/2007). `captureSource` indica cómo se capturó (`camera`, `file` o `email`) y `certified` vale `true` si es una foto de la cámara de la app guardada como PDF sellado. `fileHash` es la huella del archivo guardado y `signature` la firma de Billivo sobre esa huella. El PDF certificado lleva además la firma incorporada (PAdES), que se puede verificar con cualquier lector de PDF
 - `erpId`: el id que el ERP envió en `POST /expenses/erp`
-- `reviewStatus`: siempre `confirmed`, porque estos endpoints solo devuelven gastos confirmados. `reviewedAt` es la fecha y hora de la revisión, o `null` en los gastos confirmados antes de que existiera la revisión
+- `reviewStatus`: `confirmed`, o `pending` en `GET /expenses/erp?reviewStatus=pending`. `reviewedAt` es la fecha y hora de la revisión, o `null` en los gastos confirmados antes de que existiera la revisión
 - `paidAt`, `paidSource` y `paidBy`: cuándo, cómo (`web`, `api` o `payment_method`) y quién marcó el gasto como pagado, o `null` si no está pagado. Ver [Cambiar el Estado de un Gasto](#11-billivo-gastos-cambiar-el-estado-de-un-gasto)
 - `documentId`: id del documento escaneado. `companyId`: id de la empresa del token
 - `createdBy`: email del usuario que subió el gasto (la cuenta de la empresa o uno de sus empleados). `reviewedBy`: email del usuario que lo revisó, o `null` en los gastos confirmados antes de que existiera la revisión
@@ -1548,6 +1572,8 @@ La factura que devuelven `POST /invoice` (`invoice`), `GET /invoice` y `PATCH /i
 - Pagina `GET /expenses/erp` con `after`, no con número de página: la lista de pendientes cambia mientras confirmas
 - Confirma cada página con `POST /expenses/erp` antes de pedir la siguiente
 - Descarga el ticket de `receipt.url` enseguida, el enlace caduca a los 5 minutos
+- Deduplica por `expenseId`: un gasto importado pero no confirmado vuelve a salir en la siguiente llamada
+- Consulta la sincronización cada 5 a 15 minutos; no hace falta más frecuencia
 
 ---
 
@@ -1562,6 +1588,7 @@ La API está desplegada utilizando servicios administrados de AWS:
 - Enrutamiento automático de peticiones
 - Validación de tokens JWT integrada
 - CORS configurado para integraciones web
+- Límite de 20 peticiones por segundo (ráfagas de hasta 40) para el conjunto de la API. Por encima, la API responde `429 Too Many Requests`: espera y repite la llamada
 - Logs de acceso y métricas en CloudWatch
 
 **AWS Lambda**:

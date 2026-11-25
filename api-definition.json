@@ -3,7 +3,7 @@
   "info": {
     "title": "Billivo API",
     "description": "Billivo public API. Create, query and update invoices, manage the invoice number series, and read the expenses of Billivo Gastos (Billivo Expenses) for an ERP integration.",
-    "version": "1.6.1"
+    "version": "1.7.0"
   },
   "servers": [
     {
@@ -688,7 +688,7 @@
       "get": {
         "tags": ["Expenses"],
         "summary": "Get the expenses to register in the ERP",
-        "description": "Returns the confirmed expenses that no ERP registered yet, in order of expenseId. To get the next page, send `after` = the last expenseId of this page. An empty `expenses` array means there are no more.",
+        "description": "Returns the expenses that no ERP registered yet, in order of expenseId: the confirmed ones by default, or the pending ones (not reviewed yet) with `reviewStatus=pending`, for an ERP that reviews and approves expenses in its own system. With `certified=true`, only expenses with certified digitisation (photos taken with the app camera). To get the next page, send `after` = the last expenseId of this page. An empty `expenses` array means there are no more.\n\nThe `receipt.url` link expires after 5 minutes: download the file while you process the page. If your ERP imports an expense but fails before registering its erpId, the expense comes back in the next call, so deduplicate by `expenseId`.\n\nWith `reviewStatus=pending`, the employee can still edit the expense until it is reviewed: confirm it (`PATCH /expenses/status`) right after you import it, and then register its erpId.",
         "security": [
           {
             "BearerAuth": []
@@ -714,6 +714,26 @@
               "minimum": 1,
               "maximum": 500,
               "default": 100
+            }
+          },
+          {
+            "name": "reviewStatus",
+            "in": "query",
+            "required": false,
+            "description": "Review status of the expenses to return: `confirmed` (default) or `pending`.",
+            "schema": {
+              "type": "string",
+              "enum": ["confirmed", "pending"],
+              "default": "confirmed"
+            }
+          },
+          {
+            "name": "certified",
+            "in": "query",
+            "required": false,
+            "description": "`true` returns only expenses with certified digitisation, `false` only the others. Without it, both.",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -784,7 +804,7 @@
       "post": {
         "tags": ["Expenses"],
         "summary": "Confirm the expenses registered in the ERP",
-        "description": "Stores the ERP id of each expense. After this, the expense is not in `GET /expenses/erp` and users cannot edit or delete it in Billivo Gastos. You can send the same erpId again, so a retry is safe.",
+        "description": "Stores the ERP id of each expense. After this, the expense is not in `GET /expenses/erp` and users cannot edit or delete it in Billivo Gastos. You can send the same erpId again, so a retry is safe; a different erpId for an expense that already has one goes to `rejected`. Only confirmed expenses can be registered: confirm a pending one first with `PATCH /expenses/status`.",
         "security": [
           {
             "BearerAuth": []
@@ -2860,6 +2880,56 @@
                 "type": "string",
                 "nullable": true,
                 "description": "Presigned link to the receipt file. It expires after 5 minutes."
+              }
+            }
+          },
+          "certification": {
+            "type": "object",
+            "description": "Certified digitisation (Orden EHA/962/2007) of the receipt. The certified PDF also carries the signature embedded (PAdES), so it can be checked with any PDF reader.",
+            "properties": {
+              "captureSource": {
+                "type": "string",
+                "nullable": true,
+                "enum": ["camera", "file", "email"],
+                "description": "How the receipt was captured: `camera` (photo with the app camera), `file` (uploaded file) or `email`."
+              },
+              "certified": {
+                "type": "boolean",
+                "description": "`true` when the receipt has certified digitisation: a photo taken with the app camera, stored as a sealed PDF."
+              },
+              "fileHash": {
+                "type": "string",
+                "nullable": true,
+                "description": "Hash of the stored file, in hexadecimal."
+              },
+              "fileHashAlgorithm": {
+                "type": "string",
+                "nullable": true,
+                "example": "SHA-256"
+              },
+              "signature": {
+                "type": "string",
+                "nullable": true,
+                "description": "Billivo signature of the file hash, in Base64."
+              },
+              "signatureAlgorithm": {
+                "type": "string",
+                "nullable": true
+              },
+              "signingKeyId": {
+                "type": "string",
+                "nullable": true,
+                "description": "Id of the key that signed the hash."
+              },
+              "signedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "softwareVersion": {
+                "type": "string",
+                "nullable": true,
+                "description": "Version of the certified digitisation software."
               }
             }
           }
