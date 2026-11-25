@@ -2,6 +2,17 @@
 
 All notable changes to the Billivo API are in this file.
 
+## 1.7.0 (2026-11-25)
+
+### Added
+- `GET /expenses/erp?reviewStatus=pending`: the expenses that no one has reviewed yet, for an ERP that reviews and approves expenses in its own system. Without the parameter, or with `confirmed`, it returns the confirmed ones, as before.
+- `GET /expenses/erp?certified=true|false`: only the expenses with (or without) certified digitisation.
+- `certification` on every expense of `GET /expenses/erp` and `GET /expenses/export?format=json`: `captureSource`, `certified`, `fileHash`, `fileHashAlgorithm`, `signature`, `signatureAlgorithm`, `signingKeyId`, `signedAt` and `softwareVersion`.
+- Request limit: 20 requests per second (bursts of up to 40) for the whole API. Above it, the API answers `429 Too Many Requests`.
+
+### Changed
+- Documentation: `POST /expenses/erp` only registers confirmed expenses, a different erpId goes to `rejected`, and an expense imported but not registered comes back in the next sync (deduplicate by `expenseId`).
+
 ## 1.6.1 (2026-11-03)
 
 ### Fixed

@@ -124,7 +124,7 @@ Content-Type: application/json
 
 ```bash
 GET /expenses/export?from=2026-01-01&to=2026-03-31&format=json&page=1&limit=100
-GET /expenses/erp?after={ultimoExpenseId}&limit=100
+GET /expenses/erp?after={ultimoExpenseId}&limit=100&reviewStatus=pending&certified=true
 POST /expenses/erp        { "confirmed": [ { "expenseId": "...", "erpId": "FAC-88" } ] }
 GET /expenses/categories
 GET /expenses/paymentMethods
@@ -136,7 +136,10 @@ Authorization: Bearer {token}
 
 - La empresa necesita acceso a Billivo Gastos (si no, `403`)
 - Sin `format=json`, `/expenses/export` devuelve un enlace a un ZIP con el Excel
-- `/expenses/erp` devuelve los gastos que el ERP aún no registró. Tras el `POST`, el gasto ya no se puede editar en Billivo Gastos
+- `/expenses/erp` devuelve los gastos que el ERP aún no registró: los confirmados, o los pendientes de revisar con `reviewStatus=pending`. Con `certified=true`, solo los de digitalización certificada. Tras el `POST`, el gasto ya no se puede editar en Billivo Gastos
+- Cada gasto incluye `certification` (origen de la captura, si está certificado, huella y firma). `receipt.url` caduca a los 5 minutos
+- Reintentos: repetir el mismo `erpId` es válido; deduplica por `expenseId`
+- Límite: 20 peticiones por segundo para toda la API (`429` por encima)
 - `/expenses/status` marca un gasto como pagado (`paid`) o revisa uno pendiente (`reviewStatus`: `confirmed` o `rejected`, con `rejectionReason`)
 - `/expenses/suppliers` lista los proveedores (por NIF). Con `PATCH` el ERP guarda su id en `erpId`
 
