@@ -2,7 +2,7 @@
 
 All notable changes to the Billivo API are in this file.
 
-## 1.7.0 (unreleased)
+## 1.7.0 (2026-11-25)
 
 ### Added
 - `GET /expenses/erp?reviewStatus=pending`: the expenses that no one has reviewed yet, for an ERP that reviews and approves expenses in its own system. Without the parameter, or with `confirmed`, it returns the confirmed ones, as before.
